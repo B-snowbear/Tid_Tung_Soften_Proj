@@ -10,14 +10,19 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = 'Houma';
-    final email = 'Houma@gmail.com';
-    final balanceText = '-12,000'; // mock
+    final auth = context.watch<AuthService>();
+    final u = auth.user;
+
+    final name  = (u?.userMetadata?['name'] as String?) ?? 'Houma';
+    final email = u?.email ?? 'houma@gmail.com';
+    final photo = u?.userMetadata?['picture'] as String?;
+    const balanceText = '-12,000'; // mock for now
 
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [TTColors.bgStart, TTColors.bgEnd],
         ),
       ),
@@ -29,7 +34,7 @@ class ProfileScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // top row
+                // Top row
                 Row(
                   children: [
                     IconButton(
@@ -55,52 +60,73 @@ class ProfileScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
 
-                // avatar
+                // Avatar
                 Center(
                   child: Container(
-                    width: 120, height: 120,
+                    width: 120,
+                    height: 120,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white.withOpacity(.25), width: 2),
                     ),
                     alignment: Alignment.center,
-                    child: const Icon(Icons.account_circle, size: 110, color: Colors.white),
+                    child: ClipOval(
+                      child: photo == null
+                          ? const Icon(Icons.account_circle, size: 110, color: Colors.white)
+                          : Image.network(photo, width: 110, height: 110, fit: BoxFit.cover),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
 
-                // name/email
+                // Name / email
                 Center(
-                  child: Text(name,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            color: Colors.white, fontWeight: FontWeight.w800)),
+                  child: Text(
+                    name,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Center(
-                  child: Text(email,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: TTColors.cB7EDFF, fontWeight: FontWeight.w600)),
+                  child: Text(
+                    email,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: TTColors.cB7EDFF,
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
                 ),
 
                 const SizedBox(height: 20),
 
-                // balance
+                // Balance mock
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text('Balance',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              color: Colors.white, fontWeight: FontWeight.w600)),
+                    Text(
+                      'Balance',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
                     const SizedBox(width: 12),
-                    Text(balanceText,
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                              color: const Color(0xFFFF6E40), fontWeight: FontWeight.w800)),
+                    Text(
+                      balanceText,
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            color: const Color(0xFFFF6E40),
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
                   ],
                 ),
 
                 const SizedBox(height: 24),
 
-                // menu
+                // Menu
                 _Menu(label: 'Edit Profile', onTap: () {}),
                 const Divider(color: Colors.white24, height: 24),
                 _Menu(label: 'History', onTap: () {}),
@@ -111,11 +137,17 @@ class ProfileScreen extends StatelessWidget {
 
                 const Spacer(),
 
-                // sign out
+                // Sign out
                 Center(
                   child: Container(
                     decoration: const BoxDecoration(
-                      boxShadow: [BoxShadow(blurRadius: 18, offset: Offset(0, 8), color: Color(0x330DBCF6))],
+                      boxShadow: [
+                        BoxShadow(
+                          blurRadius: 18,
+                          offset: Offset(0, 8),
+                          color: Color(0x330DBCF6),
+                        )
+                      ],
                     ),
                     child: SizedBox(
                       width: 220,
@@ -123,13 +155,18 @@ class ProfileScreen extends StatelessWidget {
                         style: FilledButton.styleFrom(
                           backgroundColor: TTColors.primary,
                           padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
                         ),
-                        onPressed: () {
-                          context.read<AuthService>().signOut();
-                          context.go('/login');
+                        onPressed: () async {
+                          await context.read<AuthService>().signOut();
+                          context.go('/signin'); // make sure this route exists in GoRouter
                         },
-                        child: const Text('Sign Out', style: TextStyle(fontWeight: FontWeight.w700)),
+                        child: const Text(
+                          'Sign Out',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
                       ),
                     ),
                   ),
@@ -157,9 +194,13 @@ class _Menu extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(
           children: [
-            Text(label,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.white, fontWeight: FontWeight.w500)),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                  ),
+            ),
             const Spacer(),
             const Icon(Icons.chevron_right, color: Colors.white70),
           ],

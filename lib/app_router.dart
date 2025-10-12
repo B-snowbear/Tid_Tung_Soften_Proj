@@ -1,30 +1,40 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'auth_service.dart';
 import 'screens/login_screen.dart';
-import 'screens/register_screen.dart';
 import 'screens/dashboard_screen.dart';
-import 'screens/protected_screen.dart'; // optional: for status screenshot
-import 'screens/profile_screen.dart';   // ⬅️ NEW
+import 'screens/profile_screen.dart'; // <-- if you have it
 
-GoRouter buildRouter(BuildContext rootContext) {
+GoRouter buildRouter(BuildContext context) {
+  final auth = context.read<AuthService>();
+
   return GoRouter(
-    initialLocation: '/login',
-    refreshListenable: rootContext.read<AuthService>(),
-    redirect: (context, state) {
-      final authed = rootContext.read<AuthService>().signedIn;
-      final loc = state.matchedLocation;
-      if (!authed && (loc == '/protected' || loc == '/profile')) return '/login';
+    initialLocation: '/signin',
+    refreshListenable: auth,
+    redirect: (ctx, state) {
+      final loggedIn = auth.isLoggedIn;
+      final atSignIn = state.matchedLocation == '/signin';
+
+      // Handle root (/) explicitly
+      if (state.matchedLocation == '/') {
+        return loggedIn ? '/dashboard' : '/signin';
+      }
+
+      if (!loggedIn && !atSignIn) return '/signin';
+      if (loggedIn && atSignIn)   return '/dashboard';
       return null;
     },
     routes: [
-      GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
-      GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
-      GoRoute(path: '/protected', builder: (_, __) => const DashboardScreen()),
-      GoRoute(path: '/protected-status', builder: (_, __) => const ProtectedScreen()),
-      GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()), // ⬅️ NEW
+      // root mapping so "/" is valid
+      GoRoute(
+        path: '/',
+        redirect: (ctx, state) => auth.isLoggedIn ? '/dashboard' : '/signin',
+      ),
+      GoRoute(path: '/signin',    builder: (_, __) => const LoginScreen()),
+      GoRoute(path: '/dashboard', builder: (_, __) => const DashboardScreen()),
+      GoRoute(path: '/profile',   builder: (_, __) => const ProfileScreen()),
     ],
   );
 }
