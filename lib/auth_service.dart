@@ -1,21 +1,60 @@
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthService extends ChangeNotifier {
+  Future<void> signInWithEmail(String email, String password) async {
+    try {
+      final response = await _supabase.auth.signInWithPassword(email: email, password: password);
+      if (response.session == null || response.user == null) {
+        throw Exception('Login failed: Invalid email or password');
+      }
+    } catch (e) {
+      debugPrint('Error signing in with email: $e');
+      rethrow;
+    }
+  }
+  Future<void> registerMock({required String name, required String password}) async {
+    // Simulate registration logic (no-op for mock)
+    await Future.delayed(const Duration(milliseconds: 500));
+  }
+  final SupabaseClient _supabase = Supabase.instance.client;
   bool _signedIn = false;
   bool get signedIn => _signedIn;
 
-  Future<void> signInMock() async {
-    _signedIn = true;
-    notifyListeners();
+  AuthService() {
+    // Check initial auth state
+    _signedIn = _supabase.auth.currentSession != null;
+    
+    // Listen to auth state changes
+    _supabase.auth.onAuthStateChange.listen((data) {
+      final Session? session = data.session;
+      _signedIn = session != null;
+      notifyListeners();
+    });
   }
 
-  Future<void> registerMock({required String name, required String password}) async {
-    _signedIn = true;
-    notifyListeners();
+  Future<void> signInWithGoogle() async {
+    try {
+      // Perform Google sign-in
+      await _supabase.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: 'io.supabase.flutter://login-callback',
+        queryParams: {'prompt': 'select_account'},
+      );
+    } catch (e) {
+      // Handle errors, e.g., show a snackbar
+      debugPrint('Error signing in with Google: $e');
+    }
   }
 
-  void signOut() {
-    _signedIn = false;
-    notifyListeners();
+  Future<void> signOut() async {
+  await _supabase.auth.signOut();
+  debugPrint('After signOut, session: ${_supabase.auth.currentSession}');
+  _signedIn = false;
+  notifyListeners();
   }
+
+  // The old mock methods are no longer needed
+  // Future<void> signInMock() async { ... }
+  // Future<void> registerMock({required String name, required String password}) async { ... }
 }

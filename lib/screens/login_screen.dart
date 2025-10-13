@@ -12,13 +12,31 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool _loading = false;
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  String? _error;
 
-  Future<void> _handleSignIn() async {
+  Future<void> _handleSignInGoogle() async {
     if (_loading) return;
     setState(() => _loading = true);
-    await context.read<AuthService>().signInMock();
-    if (!mounted) return;
-    context.go('/protected'); // dashboard
+    await context.read<AuthService>().signInWithGoogle();
+    if (mounted) setState(() => _loading = false);
+  }
+
+  Future<void> _handleSignInEmail() async {
+    if (_loading) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      await context.read<AuthService>().signInWithEmail(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
+    } catch (e) {
+      setState(() => _error = e.toString());
+    }
     if (mounted) setState(() => _loading = false);
   }
 
@@ -59,11 +77,83 @@ class _LoginScreenState extends State<LoginScreen> {
                               color: TTColors.cC9D7FF,
                               fontWeight: FontWeight.w500,
                             )),
-                    const SizedBox(height: 36),
+                    const SizedBox(height: 24),
+                    // Email/Password login form
+                    TextField(
+                      controller: _emailController,
+                      decoration: InputDecoration(
+                        hintText: 'Email',
+                        filled: true,
+                        fillColor: Colors.white.withOpacity(0.18),
+                        hintStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          borderSide: BorderSide(color: Colors.white.withOpacity(0.12)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          borderSide: BorderSide(color: Colors.white.withOpacity(0.12)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          borderSide: const BorderSide(color: TTColors.c0DBCF6, width: 1.4),
+                        ),
+                      ),
+                      style: const TextStyle(color: Colors.white),
+                      cursorColor: TTColors.cB7EDFF,
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: true,
+                      decoration: InputDecoration(
+                        hintText: 'Password',
+                        filled: true,
+                        fillColor: Colors.white.withOpacity(0.18),
+                        hintStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          borderSide: BorderSide(color: Colors.white.withOpacity(0.12)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          borderSide: BorderSide(color: Colors.white.withOpacity(0.12)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          borderSide: const BorderSide(color: TTColors.c0DBCF6, width: 1.4),
+                        ),
+                      ),
+                      style: const TextStyle(color: Colors.white),
+                      cursorColor: TTColors.cB7EDFF,
+                    ),
+                    const SizedBox(height: 12),
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton(
-                        onPressed: _handleSignIn,
+                        onPressed: _handleSignInEmail,
+                        child: _loading
+                            ? const SizedBox(
+                                width: 18, height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white,
+                                ),
+                              )
+                            : const Text('Sign in with Email', style: TextStyle(fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                    if (_error != null) ...[
+                      const SizedBox(height: 8),
+                      Text(_error!, style: const TextStyle(color: Colors.red)),
+                    ],
+                    const SizedBox(height: 24),
+                    // Google sign-in button
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: _handleSignInGoogle,
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [

@@ -4,15 +4,17 @@ import 'package:provider/provider.dart';
 
 import '../auth_service.dart';
 import '../theme.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final name = 'Houma';
-    final email = 'Houma@gmail.com';
-    final balanceText = '-12,000'; // mock
+  final user = Supabase.instance.client.auth.currentUser;
+  final email = user?.email ?? '';
+  final name = user?.userMetadata?['name'] ?? email;
+  final balanceText = '-12,000'; // TODO: Replace with real balance if available
 
     return Container(
       decoration: const BoxDecoration(
@@ -125,8 +127,8 @@ class ProfileScreen extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                         ),
-                        onPressed: () {
-                          context.read<AuthService>().signOut();
+                        onPressed: () async {
+                          await context.read<AuthService>().signOut();
                           context.go('/login');
                         },
                         child: const Text('Sign Out', style: TextStyle(fontWeight: FontWeight.w700)),

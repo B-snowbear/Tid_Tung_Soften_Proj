@@ -16,7 +16,12 @@ GoRouter buildRouter(BuildContext rootContext) {
     redirect: (context, state) {
       final authed = rootContext.read<AuthService>().signedIn;
       final loc = state.matchedLocation;
+      // If not authenticated, block access to protected/profile
       if (!authed && (loc == '/protected' || loc == '/profile')) return '/login';
+      // If authenticated and on login/register or unknown route, send to dashboard
+      if (authed && (loc == '/login' || loc == '/register' || loc.startsWith('io.supabase.flutter'))) return '/protected';
+      // If unknown route, send to login
+      if (!authed && !(loc == '/login' || loc == '/register' || loc == '/protected' || loc == '/profile' || loc == '/protected-status')) return '/login';
       return null;
     },
     routes: [
@@ -26,5 +31,6 @@ GoRouter buildRouter(BuildContext rootContext) {
       GoRoute(path: '/protected-status', builder: (_, __) => const ProtectedScreen()),
       GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()), // ⬅️ NEW
     ],
+    errorBuilder: (_, __) => const LoginScreen(),
   );
 }
