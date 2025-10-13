@@ -1,20 +1,20 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'auth_service.dart';
 import 'screens/login_screen.dart';
-import 'screens/register_screen.dart';
 import 'screens/dashboard_screen.dart';
-import 'screens/protected_screen.dart'; // optional: for status screenshot
-import 'screens/profile_screen.dart';   // ⬅️ NEW
+import 'screens/profile_screen.dart'; // <-- if you have it
 
-GoRouter buildRouter(BuildContext rootContext) {
+GoRouter buildRouter(BuildContext context) {
+  final auth = context.read<AuthService>();
+
   return GoRouter(
     initialLocation: '/login',
-    refreshListenable: rootContext.read<AuthService>(),
+    refreshListenable: auth,
     redirect: (context, state) {
-      final authed = rootContext.read<AuthService>().signedIn;
+      final authed = auth.signedIn;
       final loc = state.matchedLocation;
       // If not authenticated, block access to protected/profile
       if (!authed && (loc == '/protected' || loc == '/profile')) return '/login';
@@ -26,10 +26,8 @@ GoRouter buildRouter(BuildContext rootContext) {
     },
     routes: [
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
-      GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
       GoRoute(path: '/protected', builder: (_, __) => const DashboardScreen()),
-      GoRoute(path: '/protected-status', builder: (_, __) => const ProtectedScreen()),
-      GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()), // ⬅️ NEW
+      GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
     ],
     errorBuilder: (_, __) => const LoginScreen(),
   );
