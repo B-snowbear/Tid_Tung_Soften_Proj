@@ -82,15 +82,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               );
                               return;
                             }
-                            try {
-                              await context.read<AuthService>().register(n, pwd.text);
-                              if (!mounted) return;
-                              context.go('/protected');
-                            } catch (e) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Registration failed: ${e.toString()}')),
-                              );
-                            }
+                            await context.read<AuthService>().registerMock(name: n, password: pwd.text);
+                            if (!mounted) return;
+                            context.go('/protected');
                           },
                         ),
                       ],

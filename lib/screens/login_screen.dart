@@ -12,7 +12,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool _loading = false;
-  final _usernameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   String? _error;
 
@@ -30,8 +30,8 @@ class _LoginScreenState extends State<LoginScreen> {
       _error = null;
     });
     try {
-      await context.read<AuthService>().signInWithUsername(
-        _usernameController.text.trim(),
+      await context.read<AuthService>().signInWithEmail(
+        _emailController.text.trim(),
         _passwordController.text,
       );
     } catch (e) {
@@ -78,11 +78,11 @@ class _LoginScreenState extends State<LoginScreen> {
                               fontWeight: FontWeight.w500,
                             )),
                     const SizedBox(height: 24),
-                    // Username/Password login form
+                    // Email/Password login form
                     TextField(
-                      controller: _usernameController,
+                      controller: _emailController,
                       decoration: InputDecoration(
-                        hintText: 'Username',
+                        hintText: 'Email',
                         filled: true,
                         fillColor: Colors.white.withOpacity(0.18),
                         hintStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
