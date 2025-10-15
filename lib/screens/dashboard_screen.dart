@@ -18,7 +18,8 @@ class DashboardScreen extends StatelessWidget {
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [TTColors.bgStart, TTColors.bgEnd],
         ),
       ),
@@ -30,17 +31,26 @@ class DashboardScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // ── Header ────────────────────────────────────────────────
                 Row(
                   children: [
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Tid Tung',
-                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                  color: Colors.white, fontWeight: FontWeight.w800)),
-                        Text('by houma',
-                            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                                  color: TTColors.cC9D7FF)),
+                        Text(
+                          'Tid Tung',
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
+                              ?.copyWith(color: Colors.white, fontWeight: FontWeight.w800),
+                        ),
+                        Text(
+                          'by houma',
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelLarge
+                              ?.copyWith(color: TTColors.cC9D7FF),
+                        ),
                       ],
                     ),
                     const Spacer(),
@@ -56,7 +66,30 @@ class DashboardScreen extends StatelessWidget {
                     ),
                   ],
                 ),
+
                 const SizedBox(height: 12),
+
+                // ── 🔒 Protected Status (สำหรับถ่ายสกรีน 401/200) ─────────
+                // ใส่ปุ่มไว้บนสุดของ content ใช้ชั่วคราวสำหรับสปรินต์นี้
+                // เสร็จงานแล้วจะลบออกก็ได้
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: FilledButton.icon(
+                    onPressed: () => context.push('/protected-status'),
+                    icon: const Icon(Icons.verified_user),
+                    label: const Text('Open Protected Status'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.white.withOpacity(0.16),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                // ── Trips list ────────────────────────────────────────────
                 Expanded(
                   child: ListView.separated(
                     padding: const EdgeInsets.only(bottom: 96),
@@ -83,6 +116,8 @@ class DashboardScreen extends StatelessWidget {
             ),
           ),
         ),
+
+        // ── FAB: Add Trip ────────────────────────────────────────────────
         floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
         floatingActionButton: Column(
           mainAxisSize: MainAxisSize.min,
@@ -97,7 +132,8 @@ class DashboardScreen extends StatelessWidget {
                 );
               },
               child: Container(
-                width: 56, height: 56,
+                width: 56,
+                height: 56,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white, width: 2),
@@ -107,8 +143,10 @@ class DashboardScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 6),
-            Text('Add a Trip',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(color: Colors.white)),
+            Text(
+              'Add a Trip',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(color: Colors.white),
+            ),
           ],
         ),
       ),
@@ -138,28 +176,43 @@ class _TripCard extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
           gradient: const LinearGradient(
-            begin: Alignment.topLeft, end: Alignment.bottomRight,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
             colors: [Color(0xFF2C5AA8), Color(0xFF3A66C0)],
           ),
-          boxShadow: const [BoxShadow(blurRadius: 16, offset: Offset(0, 6), color: Color(0x33000000))],
+          boxShadow: const [
+            BoxShadow(blurRadius: 16, offset: Offset(0, 6), color: Color(0x33000000))
+          ],
         ),
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: Colors.white, fontWeight: FontWeight.w700)),
+            Text(
+              title,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleLarge
+                  ?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+            ),
             const SizedBox(height: 12),
             Text('Total Spent',
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(color: TTColors.cB7EDFF)),
-            Text(totalSpent,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.white, fontWeight: FontWeight.w600)),
+                style:
+                    Theme.of(context).textTheme.labelLarge?.copyWith(color: TTColors.cB7EDFF)),
+            Text(
+              totalSpent,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(color: Colors.white, fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: 6),
             Text('Date',
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(color: TTColors.cB7EDFF)),
-            Text(date, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white)),
+                style:
+                    Theme.of(context).textTheme.labelLarge?.copyWith(color: TTColors.cB7EDFF)),
+            Text(date,
+                style:
+                    Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white)),
           ],
         ),
       ),

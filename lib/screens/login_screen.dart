@@ -78,6 +78,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               fontWeight: FontWeight.w500,
                             )),
                     const SizedBox(height: 24),
+
                     // Email/Password login form
                     TextField(
                       controller: _emailController,
@@ -149,6 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       Text(_error!, style: const TextStyle(color: Colors.red)),
                     ],
                     const SizedBox(height: 24),
+
                     // Google sign-in button
                     SizedBox(
                       width: double.infinity,
@@ -185,6 +187,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 14),
+
                     TextButton(
                       onPressed: () => context.push('/register'),
                       child: const Text(
@@ -195,6 +198,18 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
+
+                    // ⬇️⬇️⬇️ ⬅️ ADDED: ปุ่มทดสอบ protected route ตอนยังไม่ล็อกอิน
+                    const SizedBox(height: 6),
+                    TextButton(
+                      onPressed: () => context.push('/protected-status'),
+                      child: const Text(
+                        '🔒 Test Protected Route',
+                        style: TextStyle(color: Colors.white70, fontSize: 14),
+                      ),
+                    ),
+                    // ⬆️⬆️⬆️ ⬅️ ADDED
+
                   ],
                 ),
               ),
