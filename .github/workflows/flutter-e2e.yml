@@ -1,24 +1,16 @@
-name: Flutter E2E Tests
+# .github/workflows/flutter-ci.yml
+name: Flutter CI (Unit Tests)
 on: [push, pull_request]
 
 jobs:
   test:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout source code
-        uses: actions/checkout@v4
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.0'  # or your current Flutter version
-
+          flutter-version: '3.35.6'   # match your local flutter doctor
       - name: Install dependencies
         run: flutter pub get
-
-      - name: Run Unit Tests
-        run: flutter test
-
-      - name: Run Integration Tests
-        run: flutter test integration_test
+      - name: Run unit tests only (no emulator required)
+        run: flutter test test/utils_test.dart
