@@ -1,0 +1,24 @@
+name: Flutter E2E Tests
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0'  # or your current Flutter version
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run Unit Tests
+        run: flutter test
+
+      - name: Run Integration Tests
+        run: flutter test integration_test
