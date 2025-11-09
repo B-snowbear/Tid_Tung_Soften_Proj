@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
+import 'package:provider/provider.dart' ;
 import '../auth_service.dart';
 import '../theme.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:supabase_flutter/supabase_flutter.dart' as supa;
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -11,7 +13,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  bool _loading = false;
+  bool _loading = false;  
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   String? _error;
@@ -19,9 +21,23 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleSignInGoogle() async {
     if (_loading) return;
     setState(() => _loading = true);
-    await context.read<AuthService>().signInWithGoogle();
-    if (mounted) setState(() => _loading = false);
+    try {
+      await supa.Supabase.instance.client.auth.signInWithOAuth(
+        supa.OAuthProvider.google,
+        redirectTo: kIsWeb ? null : 'tidtung://auth-callback',
+        authScreenLaunchMode: supa.LaunchMode.externalApplication,
+      );
+    } on supa.AuthException catch (e) { // 👈 prefix 'supa.' here too
+      debugPrint('Google sign-in error: ${e.message}');
+      setState(() => _error = e.message);
+    } catch (e) {
+      debugPrint('Unexpected error: $e');
+      setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
+
 
   Future<void> _handleSignInEmail() async {
     if (_loading) return;

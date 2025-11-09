@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
-import '../auth_service.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:supabase_flutter/supabase_flutter.dart' as supa;
 import '../theme.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -11,10 +11,61 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final name = TextEditingController();
-  final pwd = TextEditingController();
-  final confirm = TextEditingController();
-  bool obscure1 = true, obscure2 = true;
+  final _name = TextEditingController();
+  final _email = TextEditingController();
+  final _pwd = TextEditingController();
+  final _confirm = TextEditingController();
+  bool _obscure1 = true, _obscure2 = true;
+  bool _loading = false;
+
+  Future<void> _handleRegister() async {
+    if (_loading) return;
+    final name = _name.text.trim();
+    final email = _email.text.trim();
+    final pwd = _pwd.text;
+    final confirm = _confirm.text;
+
+    String? error;
+    if (name.isEmpty) error = 'Please enter your name';
+    else if (email.isEmpty || !email.contains('@')) error = 'Please enter a valid email';
+    else if (pwd.length < 6) error = 'Password must be at least 6 characters';
+    else if (pwd != confirm) error = 'Passwords do not match';
+
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+      return;
+    }
+
+    setState(() => _loading = true);
+    try {
+      final client = supa.Supabase.instance.client;
+
+      final res = await client.auth.signUp(
+        email: email,
+        password: pwd,
+        data: {'full_name': name}, // goes to user_metadata; DB trigger can copy to profiles
+        emailRedirectTo: kIsWeb ? null : 'tidtung://auth-callback',
+      );
+
+      // If your project requires email confirmation, res.session will be null until the user confirms.
+      if (res.session != null) {
+        if (!mounted) return;
+        context.go('/'); // already signed in
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Check your email to confirm your account.')),
+        );
+        context.go('/login');
+      }
+    } on supa.AuthException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Sign up failed: $e')));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,37 +106,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             colors: [TTColors.c0DBCF6, TTColors.cB7EDFF],
                           ).createShader(r),
                           child: Text('Create Profile',
-                              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                    color: Colors.white, fontWeight: FontWeight.w800,
-                                  )),
+                            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                              color: Colors.white, fontWeight: FontWeight.w800,
+                            )),
                         ),
                         const SizedBox(height: 24),
-                        _Field(controller: name, hint: 'Enter Name', icon: Icons.edit),
+
+                        _Field(controller: _name, hint: 'Enter Name', icon: Icons.edit),
+                        const SizedBox(height: 12),
+                        _Field(controller: _email, hint: 'Email', icon: Icons.email_outlined),
                         const SizedBox(height: 12),
                         _Field(
-                          controller: pwd, hint: 'Password', icon: Icons.lock_outline,
-                          obscure: obscure1, onToggleObscure: () => setState(() => obscure1 = !obscure1),
+                          controller: _pwd, hint: 'Password', icon: Icons.lock_outline,
+                          obscure: _obscure1, onToggleObscure: () => setState(() => _obscure1 = !_obscure1),
                         ),
                         const SizedBox(height: 12),
                         _Field(
-                          controller: confirm, hint: 'Confirm Password', icon: Icons.lock_outline,
-                          obscure: obscure2, onToggleObscure: () => setState(() => obscure2 = !obscure2),
+                          controller: _confirm, hint: 'Confirm Password', icon: Icons.lock_outline,
+                          obscure: _obscure2, onToggleObscure: () => setState(() => _obscure2 = !_obscure2),
                         ),
+
                         const SizedBox(height: 28),
                         _GlowButton(
-                          text: 'Get Start',
-                          onTap: () async {
-                            final n = name.text.trim();
-                            if (n.isEmpty || pwd.text.length < 6 || pwd.text != confirm.text) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Please enter name and matching passwords (min 6 chars).')),
-                              );
-                              return;
-                            }
-                            await context.read<AuthService>().registerMock(name: n, password: pwd.text);
-                            if (!mounted) return;
-                            context.go('/protected');
-                          },
+                          text: _loading ? 'Creating...' : 'Get Start',
+                          onTap: _loading ? null : _handleRegister,
                         ),
                       ],
                     ),
@@ -122,6 +166,7 @@ class _Field extends StatelessWidget {
       obscureText: obscure,
       style: const TextStyle(color: Colors.white),
       cursorColor: TTColors.cB7EDFF,
+      keyboardType: hint == 'Email' ? TextInputType.emailAddress : TextInputType.text,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
@@ -156,7 +201,7 @@ class _Field extends StatelessWidget {
 class _GlowButton extends StatelessWidget {
   const _GlowButton({required this.text, required this.onTap});
   final String text;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
