@@ -33,19 +33,28 @@ class AuthService extends ChangeNotifier {
     });
   }
 
-  Future<void> signInWithGoogle() async {
-    try {
-      // Perform Google sign-in
-      await _supabase.auth.signInWithOAuth(
-        OAuthProvider.google,
-        redirectTo: 'io.supabase.flutter://login-callback',
-        queryParams: {'prompt': 'select_account'},
-      );
-    } catch (e) {
-      // Handle errors, e.g., show a snackbar
-      debugPrint('Error signing in with Google: $e');
-    }
+Future<void> signInWithGoogle() async {
+  try {
+    // On web, redirect back to the tab you’re currently on (e.g. http://localhost:5xxxx)
+    // On mobile/desktop apps, keep the deep link (Supabase default sample).
+    final redirect = kIsWeb
+        ? Uri.base.origin // e.g. http://localhost:52731
+        : 'io.supabase.flutter://login-callback';
+
+    await _supabase.auth.signInWithOAuth(
+      OAuthProvider.google,
+      redirectTo: redirect,
+      // optional but helpful:
+      queryParams: {
+        'prompt': 'select_account',   // or 'consent'
+        'access_type': 'offline',     // get refresh_token on web
+      },
+    );
+  } catch (e) {
+    debugPrint('Error signing in with Google: $e');
   }
+}
+
 
   Future<void> signOut() async {
   await _supabase.auth.signOut();

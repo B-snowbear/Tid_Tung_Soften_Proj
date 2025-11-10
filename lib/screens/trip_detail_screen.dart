@@ -1,30 +1,74 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
-
+import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme.dart';
-import '../mock_store.dart';
-import '../models.dart';
 
-class TripDetailScreen extends StatelessWidget {
+class TripDetailScreen extends StatefulWidget {
   final String tripId;
-  const TripDetailScreen({super.key, required this.tripId});
+  final String tripName;
+  final DateTime? startDate;
+  final DateTime? endDate;
+
+  const TripDetailScreen({
+    super.key,
+    required this.tripId,
+    required this.tripName,
+    this.startDate,
+    this.endDate,
+  });
+
+  @override
+  State<TripDetailScreen> createState() => _TripDetailScreenState();
+}
+
+class _TripDetailScreenState extends State<TripDetailScreen> {
+  late Future<List<Map<String, dynamic>>> _membersFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _membersFuture = _fetchMembers(widget.tripId);
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchMembers(String tripId) async {
+    final supabase = Supabase.instance.client;
+    final token = supabase.auth.currentSession?.accessToken;
+    if (token == null) throw Exception('Missing Supabase session token.');
+
+    final url = Uri.parse('http://10.0.2.2:4000/api/trips/$tripId/members');
+    final res = await http.get(url, headers: {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    });
+
+    if (res.statusCode != 200) {
+      throw Exception('Failed to load members: ${res.body}');
+    }
+
+    final data = (jsonDecode(res.body) as List).cast<Map<String, dynamic>>();
+    return data;
+  }
+
+  void _reload() {
+    setState(() => _membersFuture = _fetchMembers(widget.tripId));
+  }
 
   @override
   Widget build(BuildContext context) {
-    final store = context.watch<MockStore>();
-    final trip = store.getTrip(tripId);
-    final money = NumberFormat.currency(locale: 'th_TH', symbol: 'THB ');
     final dateFmt = DateFormat('d MMM y');
-
-    if (trip == null) {
-      return const Scaffold(body: Center(child: Text('Trip not found')));
-    }
+    final dateRange = (widget.startDate != null && widget.endDate != null)
+        ? '${dateFmt.format(widget.startDate!)} – ${dateFmt.format(widget.endDate!)}'
+        : 'No date info';
 
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [TTColors.bgStart, TTColors.bgEnd],
         ),
       ),
@@ -32,272 +76,253 @@ class TripDetailScreen extends StatelessWidget {
         backgroundColor: Colors.transparent,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
-          title: Text(trip.title),
+          title: Text(widget.tripName),
           centerTitle: true,
         ),
-        body: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
-          children: [
-            // Trip meta card
-            _MetaCard(
-              title: trip.title,
-              dateRange:
-                  '${dateFmt.format(trip.start)}  –  ${dateFmt.format(trip.end)}',
-              total: money.format(trip.total),
-            ),
-            const SizedBox(height: 12),
-
-            // Expenses list
-            ...trip.expenses.map((e) => _ExpenseTile(
-                  title: e.title,
-                  subtitle:
-                      '${e.category} • ${dateFmt.format(e.date)} • Payer: ${e.payer.name}',
-                  amount: money.format(e.amount),
-                )),
-            if (trip.expenses.isEmpty)
-              Container(
-                margin: const EdgeInsets.only(top: 12),
-                padding: const EdgeInsets.all(16),
-                decoration: _kCardDeco,
-                child: Text(
-                  'No expenses yet.\nTap “Add Expense” to create one.',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyMedium
-                      ?.copyWith(color: Colors.white),
-                ),
-              ),
-          ],
-        ),
-        // Add Expense button
-        bottomNavigationBar: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-            child: FilledButton.icon(
-              onPressed: () => _openAddExpense(context, trip),
-              icon: const Icon(Icons.add),
-              label: const Text('Add Expense'),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _openAddExpense(BuildContext context, Trip trip) {
-    final store = context.read<MockStore>();
-    final titleCtrl = TextEditingController();
-    final amountCtrl = TextEditingController();
-
-    Member payer = trip.members.first;
-    String category = 'Food';
-    DateTime date = DateTime.now();
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      showDragHandle: true,
-      builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
-            left: 16,
-            right: 16,
-            top: 8,
-          ),
+        body: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Add Expense', style: Theme.of(ctx).textTheme.titleLarge),
-              const SizedBox(height: 12),
-              TextField(
-                controller: titleCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Title',
-                  hintText: 'e.g., Dinner',
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: amountCtrl,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(
-                  labelText: 'Amount (THB)',
-                ),
-              ),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<Member>(
-                value: payer,
-                items: trip.members
-                    .map((m) =>
-                        DropdownMenuItem(value: m, child: Text(m.name)))
-                    .toList(),
-                onChanged: (v) => payer = v ?? payer,
-                decoration: const InputDecoration(labelText: 'Payer'),
-              ),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                value: category,
-                items: const ['Food', 'Transport', 'Accommodation', 'Misc']
-                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                    .toList(),
-                onChanged: (v) => category = v ?? category,
-                decoration: const InputDecoration(labelText: 'Category'),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () async {
-                        final picked = await showDatePicker(
-                          context: ctx,
-                          firstDate: DateTime(2020),
-                          lastDate: DateTime(2035),
-                          initialDate: date,
-                        );
-                        if (picked != null) date = picked;
-                      },
-                      child: const Text('Pick Date'),
-                    ),
+              // Trip summary card
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF2C5AA8), Color(0xFF3A66C0)],
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: () {
-                        final title = titleCtrl.text.trim();
-                        final amount = double.tryParse(amountCtrl.text) ?? 0;
-                        if (title.isEmpty || amount <= 0) {
-                          ScaffoldMessenger.of(ctx).showSnackBar(
-                            const SnackBar(
-                                content: Text(
-                                    'Please fill valid title & amount > 0')),
-                          );
-                          return;
-                        }
-                        final e = Expense(
-                          id: store.genId('e'),
-                          title: title,
-                          amount: amount,
-                          date: date,
-                          payer: payer,
-                          category: category,
-                        );
-                        store.addExpense(trip.id, e);
-                        Navigator.pop(ctx);
-                      },
-                      child: const Text('Save'),
+                  boxShadow: const [
+                    BoxShadow(
+                      blurRadius: 16,
+                      offset: Offset(0, 6),
+                      color: Color(0x33000000),
                     ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(widget.tripName,
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleLarge
+                            ?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            )),
+                    const SizedBox(height: 8),
+                    Text(dateRange,
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.copyWith(color: Colors.white)),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text('Trip ID: ${widget.tripId}',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelLarge
+                                  ?.copyWith(color: TTColors.cB7EDFF)),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.copy,
+                              color: Colors.white70, size: 20),
+                          onPressed: () {
+                            Clipboard.setData(
+                                ClipboardData(text: widget.tripId));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content:
+                                      Text('Trip ID copied to clipboard')),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Members section
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Members',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Colors.white, fontWeight: FontWeight.w600),
+                  ),
+                  IconButton(
+                    onPressed: _reload,
+                    icon: const Icon(Icons.refresh, color: Colors.white),
                   ),
                 ],
               ),
+
+              Expanded(
+                child: FutureBuilder<List<Map<String, dynamic>>>(
+                  future: _membersFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(
+                          child: CircularProgressIndicator(color: Colors.white));
+                    }
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Text(
+                          'Error: ${snapshot.error}',
+                          style: const TextStyle(color: Colors.redAccent),
+                        ),
+                      );
+                    }
+
+                    final members = snapshot.data ?? [];
+                    if (members.isEmpty) {
+                      return const Center(
+                        child: Text('No members yet.',
+                            style: TextStyle(color: Colors.white70)),
+                      );
+                    }
+
+                    return ListView.builder(
+                      itemCount: members.length,
+                      itemBuilder: (context, i) {
+                        final member = members[i];
+                        final profile = member['profiles'] ?? {};
+                        final role = member['role'];
+                        final name = profile['full_name'] ??
+                            (profile['email']?.split('@').first ?? 'Unknown');
+                        final email = profile['email'] ?? 'Unknown email';
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            color: Colors.white.withOpacity(0.1),
+                          ),
+                          child: ListTile(
+                            leading: const CircleAvatar(
+                              backgroundColor: TTColors.cB7EDFF,
+                              child: Icon(Icons.person, color: Colors.white),
+                            ),
+                            title: Row(
+                              children: [
+                                Text(name, style: const TextStyle(color: Colors.white)),
+                                if (role == 'owner')
+                                  const Padding(
+                                    padding: EdgeInsets.only(left: 6),
+                                    child: Text(
+                                      '(Owner)',
+                                      style: TextStyle(
+                                        color: TTColors.c0DBCF6,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            subtitle:
+                                Text(email, style: const TextStyle(color: Colors.white70)),
+                          ),
+                        );
+                      },
+                    );
+
+
+                  },
+                ),
+              ),
+
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _ActionButton(
+                    icon: Icons.receipt_long,
+                    label: 'Create Bill',
+                    onTap: () {
+                      // TODO: navigate to bill creation
+                    },
+                  ),
+                  _ActionButton(
+                    icon: Icons.account_balance_wallet,
+                    label: 'See Balance',
+                    onTap: () {
+                      // TODO: navigate to balance screen
+                    },
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              // ✅ Return button
+              Center(
+                child: OutlinedButton.icon(
+                  onPressed: () => context.go('/protected'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: const BorderSide(color: Colors.white70),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  icon: const Icon(Icons.arrow_back),
+                  label: const Text(
+                    'Return to Dashboard',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
             ],
           ),
-        );
-      },
-    );
-  }
-}
-
-// ---------------- UI bits ----------------
-
-final _kCardDeco = BoxDecoration(
-  borderRadius: BorderRadius.circular(18),
-  gradient: const LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [Color(0xFF2C5AA8), Color(0xFF3A66C0)],
-  ),
-  boxShadow: const [
-    BoxShadow(blurRadius: 16, offset: Offset(0, 6), color: Color(0x33000000)),
-  ],
-);
-
-class _MetaCard extends StatelessWidget {
-  const _MetaCard({
-    required this.title,
-    required this.dateRange,
-    required this.total,
-  });
-
-  final String title;
-  final String dateRange;
-  final String total;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: _kCardDeco,
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                  )),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Text('Total Spent',
-                  style: Theme.of(context)
-                      .textTheme
-                      .labelLarge
-                      ?.copyWith(color: TTColors.cB7EDFF)),
-              const SizedBox(width: 8),
-              Text(total,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.white, fontWeight: FontWeight.w600)),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Text('Date',
-                  style: Theme.of(context)
-                      .textTheme
-                      .labelLarge
-                      ?.copyWith(color: TTColors.cB7EDFF)),
-              const SizedBox(width: 8),
-              Text(dateRange,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyMedium
-                      ?.copyWith(color: Colors.white)),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
-class _ExpenseTile extends StatelessWidget {
-  const _ExpenseTile({
-    required this.title,
-    required this.subtitle,
-    required this.amount,
-  });
+// ------------------------------------------
 
-  final String title;
-  final String subtitle;
-  final String amount;
+class _ActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _ActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(top: 12),
-      decoration: _kCardDeco,
-      child: ListTile(
-        title: Text(title,
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-        subtitle: Text(subtitle,
-            style: TextStyle(color: Colors.white.withOpacity(0.9))),
-        trailing: Text(amount,
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: FilledButton.icon(
+          onPressed: onTap,
+          style: FilledButton.styleFrom(
+            backgroundColor: TTColors.c0DBCF6,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14)),
+          ),
+          icon: Icon(icon, color: Colors.white),
+          label: Text(label,
+              style: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.w600)),
+        ),
       ),
     );
   }
