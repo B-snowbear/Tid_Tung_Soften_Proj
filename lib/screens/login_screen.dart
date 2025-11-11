@@ -39,22 +39,33 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
 
-  Future<void> _handleSignInEmail() async {
-    if (_loading) return;
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      await context.read<AuthService>().signInWithEmail(
-        _emailController.text.trim(),
-        _passwordController.text,
-      );
-    } catch (e) {
-      setState(() => _error = e.toString());
+    Future<void> _handleSignInEmail() async {
+      if (_loading) return;
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+
+      try {
+        final email = _emailController.text.trim();
+        final password = _passwordController.text;
+
+        // Call your AuthService
+        await context.read<AuthService>().signInWithEmail(email, password);
+
+        // ✅ Wait a short moment to ensure Supabase session is stored
+        await Future.delayed(const Duration(milliseconds: 300));
+
+        // ✅ Navigate to dashboard if still mounted
+        if (mounted) context.go('/protected');
+      } catch (e) {
+        debugPrint('Sign-in failed: $e');
+        if (mounted) setState(() => _error = e.toString());
+      } finally {
+        if (mounted) setState(() => _loading = false);
+      }
     }
-    if (mounted) setState(() => _loading = false);
-  }
+
 
   @override
   Widget build(BuildContext context) {

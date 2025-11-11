@@ -124,11 +124,13 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: Text('Trip ID: ${widget.tripId}',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelLarge
-                                  ?.copyWith(color: TTColors.cB7EDFF)),
+                          child: Text(
+                            'Trip ID: ${widget.tripId}',
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelLarge
+                                ?.copyWith(color: TTColors.cB7EDFF),
+                          ),
                         ),
                         IconButton(
                           icon: const Icon(Icons.copy,
@@ -138,8 +140,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                                 ClipboardData(text: widget.tripId));
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                  content:
-                                      Text('Trip ID copied to clipboard')),
+                                  content: Text('Trip ID copied to clipboard')),
                             );
                           },
                         ),
@@ -215,7 +216,9 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                             ),
                             title: Row(
                               children: [
-                                Text(name, style: const TextStyle(color: Colors.white)),
+                                Text(name,
+                                    style:
+                                        const TextStyle(color: Colors.white)),
                                 if (role == 'owner')
                                   const Padding(
                                     padding: EdgeInsets.only(left: 6),
@@ -230,14 +233,13 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                                   ),
                               ],
                             ),
-                            subtitle:
-                                Text(email, style: const TextStyle(color: Colors.white70)),
+                            subtitle: Text(email,
+                                style:
+                                    const TextStyle(color: Colors.white70)),
                           ),
                         );
                       },
                     );
-
-
                   },
                 ),
               ),
@@ -265,7 +267,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
 
               const SizedBox(height: 16),
 
-              // ✅ Return button
+              // Return button
               Center(
                 child: OutlinedButton.icon(
                   onPressed: () => context.go('/protected'),
@@ -315,8 +317,8 @@ class _ActionButton extends StatelessWidget {
           style: FilledButton.styleFrom(
             backgroundColor: TTColors.c0DBCF6,
             padding: const EdgeInsets.symmetric(vertical: 12),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
           icon: Icon(icon, color: Colors.white),
           label: Text(label,

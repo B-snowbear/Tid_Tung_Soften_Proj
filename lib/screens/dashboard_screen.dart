@@ -72,17 +72,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _joinTrip(BuildContext context) async {
-    final codeController = TextEditingController();
+    final tripIdController = TextEditingController();
 
     await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Join Trip'),
         content: TextField(
-          controller: codeController,
+          controller: tripIdController,
           decoration: const InputDecoration(
-            labelText: 'Enter join code',
-            hintText: 'e.g. A1B2C3',
+            labelText: 'Enter Trip ID',
+            hintText: 'e.g. 123e4567-e89b-12d3-a456-426614174000',
           ),
         ),
         actions: [
@@ -92,13 +92,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           FilledButton(
             onPressed: () async {
-              final code = codeController.text.trim();
-              if (code.isEmpty) return;
+              final tripId = tripIdController.text.trim();
+              if (tripId.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter a Trip ID')),
+                );
+                return;
+              }
               Navigator.pop(ctx);
 
               try {
                 final token = Supabase.instance.client.auth.currentSession?.accessToken;
-                final r = await http.post(
+                final res = await http.post(
                   Uri.parse(kIsWeb
                       ? 'http://localhost:4000/api/trips/join'
                       : 'http://10.0.2.2:4000/api/trips/join'),
@@ -106,17 +111,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     'Authorization': 'Bearer $token',
                     'Content-Type': 'application/json',
                   },
-                  body: jsonEncode({'code': code}),
+                  body: jsonEncode({'trip_id': tripId}),
                 );
 
-                if (r.statusCode == 200) {
+                if (res.statusCode == 200) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Joined trip successfully!')),
                   );
                   await _loadTrips();
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Join failed: ${r.body}')),
+                    SnackBar(content: Text('Join failed: ${res.body}')),
                   );
                 }
               } catch (e) {
@@ -131,6 +136,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
