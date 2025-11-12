@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme.dart';
+import '../ui/billing/create_bill_sheet.dart';
+import '../ui/billing/balance_page.dart';
 
 class TripDetailScreen extends StatefulWidget {
   final String tripId;
@@ -251,15 +253,38 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                   _ActionButton(
                     icon: Icons.receipt_long,
                     label: 'Create Bill',
-                    onTap: () {
-                      // TODO: navigate to bill creation
+                    onTap: () async {
+                      final sb = Supabase.instance.client;
+                      final me = sb.auth.currentUser!;
+
+                      // ใช้ข้อมูลสมาชิกที่โหลดมาจาก _membersFuture
+                      final membersRaw = await _membersFuture;
+                      final members = membersRaw.map<MemberOption>((m) {
+                        final p = (m['profiles'] ?? {}) as Map<String, dynamic>;
+                        final id = p['id'] as String;
+                        final name = (p['full_name'] as String?) ?? (p['email'] as String? ?? 'Member');
+                        return MemberOption(id, name);
+                      }).toList();
+
+                      if (!mounted) return;
+                      await showCreateBillSheet(
+                        context,
+                        tripId: widget.tripId,
+                        payerProfileId: me.id,
+                        members: members,
+                      );
+
+                      _reload(); // refresh ข้อมูลสมาชิกหลังสร้างบิลเสร็จ
                     },
                   ),
                   _ActionButton(
                     icon: Icons.account_balance_wallet,
                     label: 'See Balance',
                     onTap: () {
-                      // TODO: navigate to balance screen
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => BalancePage(tripId: widget.tripId)),
+                      );
                     },
                   ),
                 ],
