@@ -1,6 +1,7 @@
 // server/middleware/authMiddleware.js
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
+
 dotenv.config();
 
 const supabase = createClient(
