@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:go_router/go_router.dart';    
 import 'auth_service.dart';
 import 'mock_store.dart';
 import 'app_router.dart';
@@ -11,18 +12,25 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: "assets/.env");
 
-
   await Supabase.initialize(
-     url: dotenv.env['SUPABASE_URL']!,
-     anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
-     authOptions: const FlutterAuthClientOptions(
-       autoRefreshToken: true,
-     ),
-   );
+    url: dotenv.env['SUPABASE_URL']!,
+    anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
+  );
 
+  // 👇 Listen for Supabase password recovery event
+  Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+    if (data.event == AuthChangeEvent.passwordRecovery) {
+      // When user clicks reset link, Supabase logs them in and fires this
+      final ctx = rootNavigatorKey.currentContext;
+      if (ctx != null) {
+        GoRouter.of(ctx).go('/reset-password');
+      }
+    }
+  });
 
   runApp(const Root());
 }
+
 
 class Root extends StatelessWidget {
   const Root({super.key});

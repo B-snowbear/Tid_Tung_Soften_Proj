@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 dotenv.config();
-
+import authRouter from './routes/auth.js';
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -13,7 +13,6 @@ const app = express()
 app.use(cors({ origin: ['http://localhost:3000'], credentials: true }))
 app.use(express.json())
 app.use(cookieParser())
-
 // --- Supabase setup ---
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY
@@ -78,7 +77,7 @@ app.patch('/api/profile', async (req, res) => {
 app.use('/api/trips', authenticate, tripsRouter)
 app.use("/api/invite", authenticate, inviteRouter);
 app.use('/api/trips', authenticate, tripMembersRouter);
-
+app.use('/api/auth', authRouter);
 // --- Start server ---
 const PORT = process.env.PORT || 4000
 app.listen(PORT, () =>
