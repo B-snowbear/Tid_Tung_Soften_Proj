@@ -24,12 +24,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final email = _email.text.trim();
     final pwd = _pwd.text;
     final confirm = _confirm.text;
+    final passwordRegex =
+    RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$');
 
     String? error;
-    if (name.isEmpty) error = 'Please enter your name';
-    else if (email.isEmpty || !email.contains('@')) error = 'Please enter a valid email';
-    else if (pwd.length < 6) error = 'Password must be at least 6 characters';
-    else if (pwd != confirm) error = 'Passwords do not match';
+    if (name.isEmpty) {
+      error = 'Please enter your name';
+    } else if (email.isEmpty || !email.contains('@')) {
+      error = 'Please enter a valid email';
+    } else if (!passwordRegex.hasMatch(pwd)) {
+      error =
+          'Password must be ≥8 chars and include upper, lower, number, and special character.';
+    } else if (pwd != confirm) {
+      error = 'Passwords do not match';
+    }
 
     if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
