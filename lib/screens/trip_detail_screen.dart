@@ -1,13 +1,16 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../theme.dart';
-import '../ui/billing/create_bill_sheet.dart';
 import '../ui/billing/balance_page.dart';
+import '../ui/billing/create_bill_sheet.dart';
+import '../ui/billing/expense_history_page.dart';
 
 class TripDetailScreen extends StatefulWidget {
   final String tripId;
@@ -39,13 +42,18 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
   Future<List<Map<String, dynamic>>> _fetchMembers(String tripId) async {
     final supabase = Supabase.instance.client;
     final token = supabase.auth.currentSession?.accessToken;
-    if (token == null) throw Exception('Missing Supabase session token.');
+    if (token == null) {
+      throw Exception('Missing Supabase session token.');
+    }
 
     final url = Uri.parse('http://10.0.2.2:4000/api/trips/$tripId/members');
-    final res = await http.get(url, headers: {
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/json',
-    });
+    final res = await http.get(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
 
     if (res.statusCode != 200) {
       throw Exception('Failed to load members: ${res.body}');
@@ -56,15 +64,18 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
   }
 
   void _reload() {
-    setState(() => _membersFuture = _fetchMembers(widget.tripId));
+    setState(() {
+      _membersFuture = _fetchMembers(widget.tripId);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final dateFmt = DateFormat('d MMM y');
-    final dateRange = (widget.startDate != null && widget.endDate != null)
-        ? '${dateFmt.format(widget.startDate!)} – ${dateFmt.format(widget.endDate!)}'
-        : 'No date info';
+    final dateRange =
+        (widget.startDate != null && widget.endDate != null)
+            ? '${dateFmt.format(widget.startDate!)} – ${dateFmt.format(widget.endDate!)}'
+            : 'No date info';
 
     return Container(
       decoration: const BoxDecoration(
@@ -86,7 +97,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Trip summary card
+              // ---------- Trip summary card ----------
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
@@ -108,20 +119,21 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(widget.tripName,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleLarge
-                            ?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                            )),
+                    Text(
+                      widget.tripName,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
                     const SizedBox(height: 8),
-                    Text(dateRange,
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyMedium
-                            ?.copyWith(color: Colors.white)),
+                    Text(
+                      dateRange,
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodyMedium
+                          ?.copyWith(color: Colors.white),
+                    ),
                     const SizedBox(height: 4),
                     Row(
                       children: [
@@ -135,14 +147,20 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.copy,
-                              color: Colors.white70, size: 20),
+                          icon: const Icon(
+                            Icons.copy,
+                            color: Colors.white70,
+                            size: 20,
+                          ),
                           onPressed: () {
                             Clipboard.setData(
-                                ClipboardData(text: widget.tripId));
+                              ClipboardData(text: widget.tripId),
+                            );
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                  content: Text('Trip ID copied to clipboard')),
+                                content:
+                                    Text('Trip ID copied to clipboard'),
+                              ),
                             );
                           },
                         ),
@@ -154,14 +172,16 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
 
               const SizedBox(height: 16),
 
-              // Members section
+              // ---------- Members header ----------
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     'Members',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.white, fontWeight: FontWeight.w600),
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
                   ),
                   IconButton(
                     onPressed: _reload,
@@ -170,14 +190,19 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                 ],
               ),
 
+              // ---------- Member list ----------
               Expanded(
                 child: FutureBuilder<List<Map<String, dynamic>>>(
                   future: _membersFuture,
                   builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
+                    if (snapshot.connectionState != ConnectionState.done) {
                       return const Center(
-                          child: CircularProgressIndicator(color: Colors.white));
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                        ),
+                      );
                     }
+
                     if (snapshot.hasError) {
                       return Center(
                         child: Text(
@@ -190,8 +215,10 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                     final members = snapshot.data ?? [];
                     if (members.isEmpty) {
                       return const Center(
-                        child: Text('No members yet.',
-                            style: TextStyle(color: Colors.white70)),
+                        child: Text(
+                          'No members yet.',
+                          style: TextStyle(color: Colors.white70),
+                        ),
                       );
                     }
 
@@ -218,9 +245,10 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                             ),
                             title: Row(
                               children: [
-                                Text(name,
-                                    style:
-                                        const TextStyle(color: Colors.white)),
+                                Text(
+                                  name,
+                                  style: const TextStyle(color: Colors.white),
+                                ),
                                 if (role == 'owner')
                                   const Padding(
                                     padding: EdgeInsets.only(left: 6),
@@ -235,9 +263,10 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                                   ),
                               ],
                             ),
-                            subtitle: Text(email,
-                                style:
-                                    const TextStyle(color: Colors.white70)),
+                            subtitle: Text(
+                              email,
+                              style: const TextStyle(color: Colors.white70),
+                            ),
                           ),
                         );
                       },
@@ -247,6 +276,8 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
               ),
 
               const SizedBox(height: 12),
+
+              // ---------- Action buttons ----------
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
@@ -259,10 +290,13 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
 
                       // ใช้ข้อมูลสมาชิกที่โหลดมาจาก _membersFuture
                       final membersRaw = await _membersFuture;
-                      final members = membersRaw.map<MemberOption>((m) {
-                        final p = (m['profiles'] ?? {}) as Map<String, dynamic>;
+                      final members =
+                          membersRaw.map<MemberOption>((m) {
+                        final p =
+                            (m['profiles'] ?? {}) as Map<String, dynamic>;
                         final id = p['id'] as String;
-                        final name = (p['full_name'] as String?) ?? (p['email'] as String? ?? 'Member');
+                        final name = (p['full_name'] as String?) ??
+                            (p['email'] as String? ?? 'Member');
                         return MemberOption(id, name);
                       }).toList();
 
@@ -274,7 +308,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                         members: members,
                       );
 
-                      _reload(); // refresh ข้อมูลสมาชิกหลังสร้างบิลเสร็จ
+                      _reload();
                     },
                   ),
                   _ActionButton(
@@ -283,7 +317,25 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => BalancePage(tripId: widget.tripId)),
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              BalancePage(tripId: widget.tripId),
+                        ),
+                      );
+                    },
+                  ),
+                  _ActionButton(
+                    icon: Icons.history,
+                    label: 'History',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ExpenseHistoryPage(
+                            tripId: widget.tripId,
+                            tripName: widget.tripName,
+                          ),
+                        ),
                       );
                     },
                   ),
@@ -292,7 +344,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
 
               const SizedBox(height: 16),
 
-              // Return button
+              // ---------- Return button ----------
               Center(
                 child: OutlinedButton.icon(
                   onPressed: () => context.go('/protected'),
@@ -300,9 +352,12 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                     foregroundColor: Colors.white,
                     side: const BorderSide(color: Colors.white70),
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 12),
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   icon: const Icon(Icons.arrow_back),
                   label: const Text(
@@ -342,13 +397,18 @@ class _ActionButton extends StatelessWidget {
           style: FilledButton.styleFrom(
             backgroundColor: TTColors.c0DBCF6,
             padding: const EdgeInsets.symmetric(vertical: 12),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
           ),
           icon: Icon(icon, color: Colors.white),
-          label: Text(label,
-              style: const TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.w600)),
+          label: Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
       ),
     );

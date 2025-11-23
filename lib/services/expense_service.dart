@@ -3,9 +3,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 final _sb = Supabase.instance.client;
 
 class ExpenseService {
+  /// ---- Exchange Rate ----
   /// ดึงอัตราแลกเปลี่ยนเป็น THB ต่อ 1 หน่วยของ [currency]
   /// - ถ้าเป็น 'THB' → 1.0
-  /// - ถ้าไม่เจอเรทในตาราง → fallback เป็น 1.0 (กันพัง)
+  /// - ถ้าไม่เจอเรท → 1.0 กันพังไว้ก่อน
   static Future<double> _resolveFxRate(String currency) async {
     if (currency == 'THB') return 1.0;
 
@@ -20,25 +21,13 @@ class ExpenseService {
       final num v = rows.first['thb_per_1'] as num;
       return v.toDouble();
     }
-
-    // กันเคสไม่มีข้อมูลใน exchange_rates
     return 1.0;
   }
 
-  /// สร้างบิล + เพิ่ม splits
-  /// - [amount] เป็นยอดรวม “ตามสกุลเงินที่เลือก” (เช่น 100 USD)
-  /// - [currency] default = 'THB'
-  /// - ในตาราง:
-  ///   - expenses.amount      = amount (สกุลเดิม)
-  ///   - expenses.currency    = currency
-  ///   - expenses.fx_rate     = fxRate (THB per 1 unit)
-  ///   - expenses.amount_thb  = amount * fx_rate (generated column)
-  ///   - expense_splits.share_amount = ส่วนแบ่งต่อคน **หน่วย THB**
-  ///
-  /// - [participantProfileIds] ใช้ในกรณีหารเท่า ๆ กัน
-  /// - [customShares] ใช้ในกรณีหารไม่เท่ากัน:
-  ///     key   = profileId ของสมาชิก
-  ///     value = จำนวนเงินส่วนของคนนั้น (หน่วย = currency ของบิล)
+  /// ---- Create Expense (Equal / Custom Split) ----
+  /// - [amount] เป็นยอดรวมตามสกุลเงินที่เลือก (เช่น 100 USD)
+  /// - ถ้าไม่ส่ง [customShares] → หารเท่ากันด้วย participantProfileIds
+  /// - ถ้าส่ง [customShares] → หารไม่เท่ากัน (key = profileId, value = amount ในสกุลเงินของบิล)
   static Future<void> createExpense({
     required String tripId,
     required String payerProfileId, // = profiles.id (auth.uid)
@@ -48,46 +37,40 @@ class ExpenseService {
     required List<String> participantProfileIds,
     Map<String, double>? customShares,
   }) async {
-    // 1) หา fx rate สำหรับสกุลนี้ (THB per 1 unit)
+    // 1) rate ของสกุลนี้ (THB per 1 unit)
     final fxRate = await _resolveFxRate(currency);
 
-    // 2) ยอดรวมในหน่วย THB
+    // 2) ยอดรวมเป็น THB
     final totalThb = amount * fxRate;
 
-    // 3) เตรียมส่วนแบ่งของแต่ละคน (ในหน่วย THB)
+    // 3) เตรียมส่วนแบ่งของแต่ละคน (หน่วย THB)
     late final List<String> participants;
     late final Map<String, double> shareThbByMember;
 
     if (customShares != null && customShares.isNotEmpty) {
-      // 🔹 กรณี custom split:
-      //   customShares เก็บเป็นสกุลของบิล (เช่น USD) → แปลงเป็น THB ทีละคน
+      // custom split: จำนวนเงินในสกุลของบิล → แปลงเป็น THB
       participants = customShares.keys.toList();
-
       shareThbByMember = {
-        for (final entry in customShares.entries)
-          entry.key: entry.value * fxRate,
+        for (final e in customShares.entries) e.key: e.value * fxRate,
       };
-
-      // (เราเช็ค sum == amount ไปแล้วฝั่ง UI ถ้าอยากเช็คซ้ำก็ทำได้)
     } else {
-      // 🔹 กรณีหารเท่ากัน
+      // หารเท่ากัน
       participants = participantProfileIds;
       final shareThb = totalThb / participants.length;
-
       shareThbByMember = {
         for (final pid in participants) pid: shareThb,
       };
     }
 
-    // 4) สร้างแถวใน expenses
+    // 4) insert ที่ expenses
     final exp = await _sb
         .from('expenses')
         .insert({
           'trip_id': tripId,
           'profile_id': payerProfileId,
-          'amount': amount, // หน่วยเป็นสกุลที่เลือก (เช่น USD)
+          'amount': amount,
           'currency': currency,
-          'fx_rate': fxRate, // THB ต่อ 1 หน่วยของ currency
+          'fx_rate': fxRate,
           'note': note,
           'created_by': _sb.auth.currentUser!.id,
         })
@@ -96,46 +79,126 @@ class ExpenseService {
 
     final expenseId = exp['id'] as String;
 
-    // 5) บันทึก splits เป็น THB ต่อคน
+    // 5) insert splits เป็น THB ต่อคน
     final rows = shareThbByMember.entries.map((e) {
       return {
         'expense_id': expenseId,
         'trip_id': tripId,
         'member_id': e.key,
-        'share_amount': e.value, // หน่วย THB
+        'share_amount': e.value,
       };
     }).toList();
 
     await _sb.from('expense_splits').insert(rows);
   }
 
-  // โหลด balance จาก view (ค่าใน view ตอนนี้เป็น THB แล้ว)
+  /// ---- Balances per Trip ----
   static Future<List<MemberBalance>> getBalances(String tripId) async {
     final rows = await _sb
         .from('v_trip_balances')
         .select()
         .eq('trip_id', tripId);
 
-    return rows
-        .map<MemberBalance>(
-          (r) => MemberBalance(
-            memberId: r['member_id'] as String,
-            name: (r['full_name'] as String?) ?? 'Member',
-            paid: (r['paid'] as num?)?.toDouble() ?? 0,
-            owed: (r['owed'] as num?)?.toDouble() ?? 0,
-            // เผื่อในอนาคตเพิ่มคอลัมน์ balance ใน view
-            balance: (r['balance'] as num?)?.toDouble() ??
-                ((r['paid'] as num?)?.toDouble() ?? 0) -
-                    ((r['owed'] as num?)?.toDouble() ?? 0),
-          ),
-        )
-        .toList();
+    return rows.map<MemberBalance>((r) {
+      return MemberBalance(
+        memberId: r['member_id'] as String,
+        name: r['full_name'] as String? ?? 'Member',
+        paid: (r['paid'] as num?)?.toDouble() ?? 0,
+        owed: (r['owed'] as num?)?.toDouble() ?? 0,
+        balance: ((r['paid'] as num?)?.toDouble() ?? 0) -
+            ((r['owed'] as num?)?.toDouble() ?? 0),
+      );
+    }).toList();
+  }
+
+  /// ---- Expense History ----
+  static Future<List<ExpenseItem>> getTripExpenses(String tripId) async {
+    final rows = await _sb
+        .from('expenses')
+        .select('''
+          id,
+          trip_id,
+          profile_id,
+          amount,
+          currency,
+          amount_thb,
+          note,
+          created_at,
+          is_settled,
+          profiles:profiles!expenses_profile_id_fkey (
+            full_name,
+            email
+          )
+        ''')
+        .eq('trip_id', tripId)
+        .order('created_at', ascending: false);
+
+    return rows.map<ExpenseItem>((r) {
+      final payer = (r['profiles'] ?? {}) as Map<String, dynamic>;
+      return ExpenseItem(
+        id: r['id'] as String,
+        tripId: r['trip_id'] as String,
+        payerId: r['profile_id'] as String,
+        payerName:
+            payer['full_name'] ?? payer['email']?.split('@').first ?? 'Unknown',
+        amount: (r['amount'] as num).toDouble(),
+        currency: (r['currency'] as String?) ?? 'THB',
+        amountThb: (r['amount_thb'] as num).toDouble(),
+        note: r['note'] as String?,
+        createdAt: DateTime.parse(r['created_at'] as String),
+        isSettled: (r['is_settled'] as bool?) ?? false,
+      );
+    }).toList();
+  }
+
+  /// ---- Mark settled / unsettle ----
+  static Future<void> setExpenseSettled(String expenseId, bool settled) async {
+    await _sb
+        .from('expenses')
+        .update({'is_settled': settled})
+        .eq('id', expenseId);
+  }
+
+  /// ---- Delete Expense ----
+  static Future<void> deleteExpense(String expenseId) async {
+    await _sb.from('expense_splits').delete().eq('expense_id', expenseId);
+    await _sb.from('expenses').delete().eq('id', expenseId);
+  }
+
+  /// ======================================================
+  /// 🔥 รวมยอด balance ทั้งหมดของ user จากทุกทริป
+  ///   ใช้ v_trip_balances โดยตรง (ไม่ใช้ v_user_total_balance แล้ว)
+  /// ======================================================
+  static Future<double> getMyTotalBalance() async {
+    final uid = _sb.auth.currentUser?.id;
+    if (uid == null) return 0.0;
+
+    // ดึง balance ทุกแถวของ user นี้จาก view v_trip_balances
+    final rows = await _sb
+        .from('v_trip_balances')
+        .select('balance')
+        .eq('member_id', uid);
+
+    double total = 0.0;
+    for (final r in rows) {
+      final num? b = r['balance'] as num?;
+      if (b != null) {
+        total += b.toDouble();
+      }
+    }
+
+    return total;
   }
 }
 
+/// ===== models =====
+
 class MemberBalance {
-  final String memberId, name;
-  final double paid, owed, balance;
+  final String memberId;
+  final String name;
+  final double paid;
+  final double owed;
+  final double balance;
 
   MemberBalance({
     required this.memberId,
@@ -143,5 +206,31 @@ class MemberBalance {
     required this.paid,
     required this.owed,
     required this.balance,
+  });
+}
+
+class ExpenseItem {
+  final String id;
+  final String tripId;
+  final String payerId;
+  final String payerName;
+  final double amount;
+  final String currency;
+  final double amountThb;
+  final String? note;
+  final DateTime createdAt;
+  final bool isSettled;
+
+  ExpenseItem({
+    required this.id,
+    required this.tripId,
+    required this.payerId,
+    required this.payerName,
+    required this.amount,
+    required this.currency,
+    required this.amountThb,
+    required this.note,
+    required this.createdAt,
+    required this.isSettled,
   });
 }
