@@ -1,7 +1,6 @@
 import express from "express";
 import crypto from "crypto";
 const router = express.Router();
-import { pushNotification } from "../func/notify";
 
 // POST /api/invite/create   { trip_id }
 router.post("/create", async (req, res) => {
@@ -39,37 +38,6 @@ router.post("/join", async (req, res) => {
     trip_id: invite.trip_id,
     user_id: user.id,
   });
-
-  // notify the trip members
-  const { data: tripData, error: tripError } = await req.supabase
-    .from("trips")
-    .select(`
-    id,
-    name,
-    trip_members:user_id (
-      user_id,
-      member_id:id
-    )
-    `).eq("id", invite.trip_id)
-    .single(); 
-
-  if (tripError) {
-    console.error("Error fetching trip members for notification:", membersError.message);
-    return res.status(500).json({ error: "Failed to notify trip members" });
-  }
-
-  for (const member of tripData.trip_members) {
-    if (member.user_id === user.id) continue; // don't notify the joiner
-
-    await req.supabase.from("notifications").insert({
-      user_id: member.user_id,
-      message: `${user.email} joined ${tripData.name}`,
-      type: "trip_join",
-      trip_id: tripData.id,
-      member_id: member.member_id,
-      created_at: new Date()
-    });
-  }
 
   await req.supabase.from("trip_invites").update({ status: "accepted" }).eq("id", invite.id);
 
