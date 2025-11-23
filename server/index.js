@@ -9,6 +9,8 @@ import { authenticate } from './middleware/authMiddleware.js';
 import tripsRouter from './routes/trips.js';
 import inviteRouter from "./routes/invite.js";
 import tripMembersRouter from './routes/tripMembers.js';
+import notificationRouter from './routes/notification.js';
+
 const app = express()
 app.use(cors({ origin: ['http://localhost:3000'], credentials: true }))
 app.use(express.json())
@@ -78,7 +80,7 @@ app.patch('/api/profile', async (req, res) => {
 app.use('/api/trips', authenticate, tripsRouter)
 app.use("/api/invite", authenticate, inviteRouter);
 app.use('/api/trips', authenticate, tripMembersRouter);
-app.use('/api/auth', authRouter);
+app.use('/api/notifications', authenticate, notificationRouter);
 // --- Start server ---
 const PORT = process.env.PORT || 4000
 app.listen(PORT, () =>

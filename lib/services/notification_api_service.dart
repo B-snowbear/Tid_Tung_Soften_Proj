@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models.dart';
 import 'api_config.dart';
-// Add import API handler from api_service.dart
 
 class NotificationApiService extends ChangeNotifier {
   final _sb = Supabase.instance.client;
