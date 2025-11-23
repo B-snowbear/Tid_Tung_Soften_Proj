@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../services/notification_api_service.dart';
 import '../theme.dart';
@@ -23,6 +24,16 @@ class NotificationScreen extends StatelessWidget {
             backgroundColor: Colors.transparent,
             appBar: AppBar(
               backgroundColor: Colors.transparent,
+              leading: IconButton(
+                onPressed: () {
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go('/profile');
+                  }
+                },
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+              ),
               elevation: 0,
               title: const Text(
                 "Notifications",

@@ -36,7 +36,13 @@ class ProfileScreen extends StatelessWidget {
                   children: [
                     IconButton(
                       icon: const Icon(Icons.arrow_back, color: Colors.white),
-                      onPressed: () => context.pop(),
+                      onPressed: () {
+                        if (context.canPop()) {
+                          context.pop();
+                        } else {
+                          context.go('/protected');
+                        }
+                      },
                     ),
                     const Spacer(),
                     Container(
@@ -127,6 +133,7 @@ class ProfileScreen extends StatelessWidget {
                         ),
                         onPressed: () async {
                           await context.read<AuthService>().signOut();
+                          if (!context.mounted) return;
                           context.go('/login');
                         },
                         child: const Text('Sign Out', style: TextStyle(fontWeight: FontWeight.w700)),

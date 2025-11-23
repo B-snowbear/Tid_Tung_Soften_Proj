@@ -4,7 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'auth_service.dart';
 import 'services/notification_api_service.dart';
-import 'mock_store.dart';
+// import 'mock_store.dart';
 import 'app_router.dart';
 import 'theme.dart';
 
