@@ -53,7 +53,7 @@ router.post("/join", async (req, res) => {
     `).eq("id", invite.trip_id)
     .single(); 
 
-  if (tripErrorError) {
+  if (tripError) {
     console.error("Error fetching trip members for notification:", membersError.message);
     return res.status(500).json({ error: "Failed to notify trip members" });
   }
