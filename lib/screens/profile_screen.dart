@@ -47,9 +47,7 @@ class ProfileScreen extends StatelessWidget {
                       child: IconButton(
                         icon: const Icon(Icons.notifications_none, color: Colors.white),
                         onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Notifications coming soon')), // TODO : Implement notifications screen
-                          );
+                          context.go('/notifications');
                         },
                       ),
                     ),

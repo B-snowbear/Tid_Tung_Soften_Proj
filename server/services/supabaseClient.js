@@ -5,5 +5,18 @@ dotenv.config();
 
 export const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY // use service_role key on the server
+  process.env.SUPABASE_ANON_KEY
 );
+
+export const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY, 
+  {
+    auth: {
+      autoRefreshToken: false, // Admin client doesn't need to refresh tokens
+      persistSession: false    // Admin client doesn't need to save session to storage
+    }
+  }
+);
+
+

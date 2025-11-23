@@ -1,4 +1,5 @@
 import express from 'express';
+import { supabaseAdmin } from '../services/supabaseClient';
 const router = express.Router();
 export default router;
 
@@ -133,43 +134,46 @@ router.post('/join', async (req, res) => {
 
     if (joinErr) throw joinErr;
 
-    res.json({
-      success: true,
-      message: `Joined trip ${trip.name}`,
-      trip_id,
-    });
-  } catch (e) {
-    console.error('Error joining trip:', e);
-    res.status(400).json({ error: e.message });
-  }
-});
-
-// ------------------------------------------------------------
-// GET /api/trips/:id/members → list all members of this trip
-// ------------------------------------------------------------
-router.get('/:id/members', async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const { data, error } = await req.supabase
+    // get joiner profile
+    const { data: joinerProfile, error: profileErr } = req.supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', userId)
+      .single()
+    if (profileErr) throw profileErr;
+    
+    // notify the trip members
+    const { data: currentMembers, error: memberErr } = await req.supabase
       .from('trip_members')
-      .select(`
-        role,
-        member_id,
-        profiles (
-          id,
-          full_name,
-          email,
-          avatar_url
-        )
-      `)
-      .eq('trip_id', id);
+      .select('member_id')
+      .eq('trip_id', trip_id);
+    if (memberErr) throw memberErr;
 
-    if (error) throw error;
-    res.json(data);
+    if (currentMembers && currentMembers.length > 0) {
+      const joinerName = joinerProfile?.full_name || "A user";
+
+      const recipients = currentMembers.filter(m => m.member_id !== userId); // prepare to bulk insert exclude joiner
+  
+      const notifications = recipients.map(member => ({ // build notification objects
+        user_id: member.member_id, // The recipient
+        type: 'trip_join',
+        title: 'New Trip Member',
+        body: `${joinerName} joined ${trip.name}`,
+        data: { trip_id: trip.id },
+      }));
+
+      if (notifications.length > 0) { // bulk insert notifications, check if there are recipients
+        const { error: notifErr } = await supabaseAdmin
+          .from('notifications')
+          .insert(notifications);
+        if (notifErr) throw notifErr;
+      }
+    }
+
+    res.json({ success: true, message: 'Joined trip successfully' });
   } catch (e) {
-    console.error('Error fetching members:', e);
-    res.status(400).json({ error: e.message });
+    console.error('Error join rotue:', e);
+    res.status(500).json({ error: e.message });
   }
 });
 

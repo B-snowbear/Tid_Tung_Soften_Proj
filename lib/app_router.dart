@@ -9,6 +9,7 @@ import 'screens/dashboard_screen.dart';
 import 'screens/protected_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/trip_detail_screen.dart'; // ⬅️ NEW
+import 'screens/notification_screen.dart';
 
 GoRouter buildRouter(BuildContext rootContext) {
   return GoRouter(
@@ -35,6 +36,7 @@ GoRouter buildRouter(BuildContext rootContext) {
       GoRoute(path: '/protected', builder: (_, __) => const DashboardScreen()),
       GoRoute(path: '/protected-status', builder: (_, __) => const ProtectedScreen()),
       GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
+      GoRoute(path: '/notifications', builder: (context, state) => const NotificationScreen(),),
 
       // ⬇️ NEW Trip Detail route
       GoRoute(
