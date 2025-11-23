@@ -67,3 +67,4 @@ class AuthService extends ChangeNotifier {
   // Future<void> signInMock() async { ... }
   // Future<void> registerMock({required String name, required String password}) async { ... }
 }
+
