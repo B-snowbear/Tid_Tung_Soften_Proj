@@ -31,8 +31,10 @@ class Root extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-  ChangeNotifierProvider(create: (_) => AuthService()),
-  ChangeNotifierProvider(create: (_) => MockStore()..seed()),
+        ChangeNotifierProvider(create: (_) => AuthService()),
+        ChangeNotifierProvider(create: (_) => MockStore()..seed()), // remove this in production
+        // Add notification provider when ready
+        // ChangeNotifierProvider(create: (_) => NotificationApiService()),
       ],
       child: const TidTungApp(),
     );
