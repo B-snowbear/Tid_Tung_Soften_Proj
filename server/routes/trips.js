@@ -135,7 +135,7 @@ router.post('/join', async (req, res) => {
     if (joinErr) throw joinErr;
 
     // get joiner profile
-    const { data: joinerProfile, error: profileErr } = req.supabase
+    const { data: joinerProfile, error: profileErr } = supabaseAdmin
       .from('profiles')
       .select('full_name')
       .eq('id', userId)
@@ -150,7 +150,7 @@ router.post('/join', async (req, res) => {
     if (memberErr) throw memberErr;
 
     if (currentMembers && currentMembers.length > 0) {
-      const joinerName = joinerProfile?.full_name || "A user";
+      const joinerName = joinerProfile?.full_name || "Someone";
 
       const recipients = currentMembers.filter(m => m.member_id !== userId); // prepare to bulk insert exclude joiner
   

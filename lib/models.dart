@@ -66,7 +66,7 @@ class AppNotification {
       title: json["title"],
       body: json["body"] ?? "",
       isRead: json["is_read"] ?? false,
-      createdAt: DateTime.parse(json["created_at"]),
+      createdAt: json["created_at"] != null ? DateTime.parse(json["created_at"]) : DateTime.now(),
     );
   }
 }

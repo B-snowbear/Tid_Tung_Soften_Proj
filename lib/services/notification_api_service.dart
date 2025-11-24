@@ -10,7 +10,7 @@ class NotificationApiService extends ChangeNotifier {
   final _sb = Supabase.instance.client;
 
   List<AppNotification> notifications = [];
-  bool loading = false;
+  // bool loading = false;
 
   Future<String?> getAccessToken() async {
     final session = _sb.auth.currentSession;
@@ -18,12 +18,12 @@ class NotificationApiService extends ChangeNotifier {
   }
 
   Future<void> fetchNotifications() async {
-    loading = true;
+    // loading = true;
     notifyListeners();
 
     final token = await getAccessToken();
     if (token == null) {
-      loading = false;
+      // loading = false;
       notifyListeners();
       return;
     }
@@ -43,7 +43,7 @@ class NotificationApiService extends ChangeNotifier {
       notifications = raw.map((e) => AppNotification.fromJson(e)).toList();
     }
 
-    loading = false;
+    // loading = false;
     notifyListeners();
   }
 
