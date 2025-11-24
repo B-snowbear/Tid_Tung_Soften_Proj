@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart' ;
+import 'package:provider/provider.dart';
 import '../auth_service.dart';
 import '../theme.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -13,7 +13,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  bool _loading = false;  
+  bool _loading = false;
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   String? _error;
@@ -27,7 +27,7 @@ class _LoginScreenState extends State<LoginScreen> {
         redirectTo: kIsWeb ? null : 'tidtung://auth-callback',
         authScreenLaunchMode: supa.LaunchMode.externalApplication,
       );
-    } on supa.AuthException catch (e) { // 👈 prefix 'supa.' here too
+    } on supa.AuthException catch (e) {
       debugPrint('Google sign-in error: ${e.message}');
       setState(() => _error = e.message);
     } catch (e) {
@@ -38,33 +38,38 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  // 2FA email login: email+password -> tempToken -> OTP screen
+  Future<void> _handleSignInEmail() async {
+    if (_loading) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
 
-    Future<void> _handleSignInEmail() async {
-      if (_loading) return;
-      setState(() {
-        _loading = true;
-        _error = null;
-      });
+    try {
+      final email = _emailController.text.trim();
+      final password = _passwordController.text;
 
-      try {
-        final email = _emailController.text.trim();
-        final password = _passwordController.text;
+      final auth = context.read<AuthService>();
+      final tempToken = await auth.startLoginWithEmail(email, password);
 
-        // Call your AuthService
-        await context.read<AuthService>().signInWithEmail(email, password);
-
-        // ✅ Wait a short moment to ensure Supabase session is stored
-        await Future.delayed(const Duration(milliseconds: 300));
-
-        // ✅ Navigate to dashboard if still mounted
-        if (mounted) context.go('/protected');
-      } catch (e) {
-        debugPrint('Sign-in failed: $e');
-        if (mounted) setState(() => _error = e.toString());
-      } finally {
-        if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        context.push(
+          '/otp',
+          extra: {
+            'tempToken': tempToken,
+            'email': email,
+            'password': password,
+          },
+        );
       }
+    } catch (e) {
+      debugPrint('Sign-in failed: $e');
+      if (mounted) setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
+  }
 
 
   @override
@@ -72,7 +77,8 @@ class _LoginScreenState extends State<LoginScreen> {
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [TTColors.bgStart, TTColors.bgEnd],
         ),
       ),
@@ -81,7 +87,8 @@ class _LoginScreenState extends State<LoginScreen> {
         body: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 420),
                 child: Column(
@@ -89,21 +96,34 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     Image.asset(
                       'assets/images/tid_tung_logo.png',
-                      width: 140, height: 140, fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => const SizedBox(height: 140),
+                      width: 140,
+                      height: 140,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) =>
+                          const SizedBox(height: 140),
                     ),
                     const SizedBox(height: 16),
-                    Text('Tid Tung',
-                        style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: TTColors.cB7EDFF,
-                            )),
+                    Text(
+                      'Tid Tung',
+                      style: Theme.of(context)
+                          .textTheme
+                          .displaySmall
+                          ?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: TTColors.cB7EDFF,
+                          ),
+                    ),
                     const SizedBox(height: 4),
-                    Text('By Houma',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: TTColors.cC9D7FF,
-                              fontWeight: FontWeight.w500,
-                            )),
+                    Text(
+                      'By Houma',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(
+                            color: TTColors.cC9D7FF,
+                            fontWeight: FontWeight.w500,
+                          ),
+                    ),
                     const SizedBox(height: 24),
 
                     // Email/Password login form
@@ -113,19 +133,24 @@ class _LoginScreenState extends State<LoginScreen> {
                         hintText: 'Email',
                         filled: true,
                         fillColor: Colors.white.withOpacity(0.18),
-                        hintStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        hintStyle: TextStyle(
+                            color: Colors.white.withOpacity(0.7)),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 16),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(18),
-                          borderSide: BorderSide(color: Colors.white.withOpacity(0.12)),
+                          borderSide: BorderSide(
+                              color: Colors.white.withOpacity(0.12)),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(18),
-                          borderSide: BorderSide(color: Colors.white.withOpacity(0.12)),
+                          borderSide: BorderSide(
+                              color: Colors.white.withOpacity(0.12)),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(18),
-                          borderSide: const BorderSide(color: TTColors.c0DBCF6, width: 1.4),
+                          borderSide: const BorderSide(
+                              color: TTColors.c0DBCF6, width: 1.4),
                         ),
                       ),
                       style: const TextStyle(color: Colors.white),
@@ -139,19 +164,24 @@ class _LoginScreenState extends State<LoginScreen> {
                         hintText: 'Password',
                         filled: true,
                         fillColor: Colors.white.withOpacity(0.18),
-                        hintStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        hintStyle: TextStyle(
+                            color: Colors.white.withOpacity(0.7)),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 16),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(18),
-                          borderSide: BorderSide(color: Colors.white.withOpacity(0.12)),
+                          borderSide: BorderSide(
+                              color: Colors.white.withOpacity(0.12)),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(18),
-                          borderSide: BorderSide(color: Colors.white.withOpacity(0.12)),
+                          borderSide: BorderSide(
+                              color: Colors.white.withOpacity(0.12)),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(18),
-                          borderSide: const BorderSide(color: TTColors.c0DBCF6, width: 1.4),
+                          borderSide: const BorderSide(
+                              color: TTColors.c0DBCF6, width: 1.4),
                         ),
                       ),
                       style: const TextStyle(color: Colors.white),
@@ -164,17 +194,25 @@ class _LoginScreenState extends State<LoginScreen> {
                         onPressed: _handleSignInEmail,
                         child: _loading
                             ? const SizedBox(
-                                width: 18, height: 18,
+                                width: 18,
+                                height: 18,
                                 child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white,
+                                  strokeWidth: 2,
+                                  color: Colors.white,
                                 ),
                               )
-                            : const Text('Sign in with Email', style: TextStyle(fontWeight: FontWeight.w600)),
+                            : const Text(
+                              'Sign in with Email',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
                       ),
                     ),
                     if (_error != null) ...[
                       const SizedBox(height: 8),
-                      Text(_error!, style: const TextStyle(color: Colors.red)),
+                      Text(
+                        _error!,
+                        style: const TextStyle(color: Colors.red),
+                      ),
                     ],
                     const SizedBox(height: 24),
 
@@ -187,34 +225,58 @@ class _LoginScreenState extends State<LoginScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Container(
-                              width: 22, height: 22,
+                              width: 22,
+                              height: 22,
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               alignment: Alignment.center,
-                              child: Text('G',
-                                  style: TextStyle(
-                                    color: TTColors.primary,
-                                    fontWeight: FontWeight.w800,
-                                  )),
+                              child: Text(
+                                'G',
+                                style: TextStyle(
+                                  color: TTColors.primary,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
                             ),
                             const SizedBox(width: 10),
                             _loading
                                 ? const SizedBox(
-                                    width: 18, height: 18,
+                                    width: 18,
+                                    height: 18,
                                     child: CircularProgressIndicator(
-                                      strokeWidth: 2, color: Colors.white,
+                                      strokeWidth: 2,
+                                      color: Colors.white,
                                     ),
                                   )
-                                : const Text('Sign in with Google',
-                                    style: TextStyle(fontWeight: FontWeight.w600)),
+                                : const Text(
+                                    'Sign in with Google',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                           ],
                         ),
                       ),
                     ),
                     const SizedBox(height: 14),
 
+                    // Forgot password
+                    TextButton(
+                      onPressed: () => context.push('/forgot-password'),
+                      child: const Text(
+                        'Forgot password?',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          decoration: TextDecoration.underline,
+                          decorationThickness: 1.3,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+
+                    // Sign up
                     TextButton(
                       onPressed: () => context.push('/register'),
                       child: const Text(
@@ -226,17 +288,17 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
 
-                    // ⬇️⬇️⬇️ ⬅️ ADDED: ปุ่มทดสอบ protected route ตอนยังไม่ล็อกอิน
                     const SizedBox(height: 6),
                     TextButton(
                       onPressed: () => context.push('/protected-status'),
                       child: const Text(
                         '🔒 Test Protected Route',
-                        style: TextStyle(color: Colors.white70, fontSize: 14),
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
-                    // ⬆️⬆️⬆️ ⬅️ ADDED
-
                   ],
                 ),
               ),

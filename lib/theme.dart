@@ -18,29 +18,66 @@ class TTColors {
   static const surface = Colors.white;
 }
 
-ThemeData buildAppTheme() {
-  final base = ThemeData.dark();
-  return base.copyWith(
-    useMaterial3: true,
-    textTheme: GoogleFonts.interTextTheme(base.textTheme),
-    colorScheme: base.colorScheme.copyWith(
-      primary: TTColors.primary,
-      secondary: TTColors.accent,
-      surface: TTColors.surface,
-      onSurface: TTColors.textOnDark,
-      onPrimary: Colors.white,
-    ),
-    scaffoldBackgroundColor: Colors.transparent,
-    filledButtonTheme: FilledButtonThemeData(
-      style: FilledButton.styleFrom(
-        backgroundColor: TTColors.primary,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+/// ใช้ชุดนี้ใน ThemeProvider
+class AppThemes {
+  /// DARK THEME (เหมือนธีมเดิมของโปรเจกต์)
+  static ThemeData dark() {
+    final base = ThemeData.dark();
+    return base.copyWith(
+      useMaterial3: true,
+      textTheme: GoogleFonts.interTextTheme(base.textTheme),
+      colorScheme: base.colorScheme.copyWith(
+        primary: TTColors.primary,
+        secondary: TTColors.accent,
+        surface: TTColors.surface,
+        onSurface: TTColors.textOnDark,
+        onPrimary: Colors.white,
       ),
-    ),
-    textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(foregroundColor: TTColors.cC9D7FF),
-    ),
-  );
+      scaffoldBackgroundColor: Colors.transparent,
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: TTColors.primary,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: TTColors.cC9D7FF),
+      ),
+    );
+  }
+
+  /// LIGHT THEME ง่าย ๆ (พื้นขาว ปุ่มน้ำเงิน)
+  static ThemeData light() {
+    final base = ThemeData.light();
+    return base.copyWith(
+      useMaterial3: true,
+      textTheme: GoogleFonts.interTextTheme(base.textTheme),
+      colorScheme: base.colorScheme.copyWith(
+        primary: TTColors.primary,
+        secondary: TTColors.accent,
+        onPrimary: Colors.white,
+      ),
+      scaffoldBackgroundColor: Colors.white,
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: TTColors.primary,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: TTColors.c1877F2),
+      ),
+    );
+  }
 }
+
+/// เผื่อโค้ดเก่าไหนยังเรียกอยู่ จะใช้ Dark theme เป็นค่า default
+ThemeData buildAppTheme() => AppThemes.dark();

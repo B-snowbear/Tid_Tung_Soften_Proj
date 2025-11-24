@@ -1,26 +1,201 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-
-import '../auth_service.dart';
-import '../theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class ProfileScreen extends StatelessWidget {
+import '../auth_service.dart';
+import '../language_provider.dart';
+import '../services/expense_service.dart';
+import '../theme.dart';
+import '../theme_provider.dart';
+
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
   @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  late Future<double> _balanceFuture;
+
+  String? _displayName;
+  String? _email;
+  String? _avatarUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _reloadUserInfo();
+    _balanceFuture = ExpenseService.getMyTotalBalance();
+  }
+
+  void _reloadUserInfo() {
+    final user = Supabase.instance.client.auth.currentUser;
+    final email = user?.email ?? '';
+    final meta = user?.userMetadata ?? const {};
+
+    _email = email;
+    _displayName = (meta['name'] as String?) ?? email;
+    _avatarUrl = meta['avatar_url'] as String?;
+  }
+
+  void _reloadBalance() {
+    setState(() {
+      _balanceFuture = ExpenseService.getMyTotalBalance();
+    });
+  }
+
+  Future<void> _openEditProfile() async {
+    final updated = await context.push<bool>('/profile/edit');
+    if (updated == true) {
+      setState(() {
+        _reloadUserInfo();
+      });
+      _reloadBalance();
+    }
+  }
+
+  void _showSnack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg)),
+    );
+  }
+
+  Future<void> _openThemeChooser() async {
+    final themeProvider = context.read<ThemeProvider>();
+    final lang = context.read<LanguageProvider>().text;
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        final isDark = themeProvider.isDark;
+
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              Text(
+                lang.themeSheetTitle,
+                style: Theme.of(ctx).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 4),
+
+              // Light
+              ListTile(
+                leading: const Icon(Icons.light_mode),
+                title: Text(lang.themeLight),
+                trailing: !isDark
+                    ? const Icon(Icons.check, color: Colors.green)
+                    : null,
+                onTap: () {
+                  themeProvider.setMode(AppThemeMode.light);
+                  Navigator.of(ctx).pop();
+                },
+              ),
+
+              // Dark
+              ListTile(
+                leading: const Icon(Icons.dark_mode),
+                title: Text(lang.themeDark),
+                trailing: isDark
+                    ? const Icon(Icons.check, color: Colors.green)
+                    : null,
+                onTap: () {
+                  themeProvider.setMode(AppThemeMode.dark);
+                  Navigator.of(ctx).pop();
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _openLanguageChooser() async {
+    final langProvider = context.read<LanguageProvider>();
+    final current = langProvider.language;
+    final texts = langProvider.text;
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              Text(
+                texts.languageSheetTitle,
+                style: Theme.of(ctx).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 4),
+
+              ListTile(
+                leading: const Icon(Icons.language),
+                title: Text(texts.languageEnglish),
+                trailing: current == AppLanguage.en
+                    ? const Icon(Icons.check, color: Colors.green)
+                    : null,
+                onTap: () {
+                  langProvider.setLanguage(AppLanguage.en);
+                  Navigator.of(ctx).pop();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.translate),
+                title: Text(texts.languageThai),
+                trailing: current == AppLanguage.th
+                    ? const Icon(Icons.check, color: Colors.green)
+                    : null,
+                onTap: () {
+                  langProvider.setLanguage(AppLanguage.th);
+                  Navigator.of(ctx).pop();
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-  final user = Supabase.instance.client.auth.currentUser;
-  final email = user?.email ?? '';
-  final name = user?.userMetadata?['name'] ?? email;
-  final balanceText = '-12,000'; // TODO: Replace with real balance if available
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDark = themeProvider.isDark;
+
+    final langProvider = context.watch<LanguageProvider>();
+    final t = langProvider.text;
+
+    final name = _displayName ?? '';
+    final email = _email ?? '';
+
+    // gradient ใช้สีจาก theme ปัจจุบัน
+    final scheme = Theme.of(context).colorScheme;
+    final bgColors = [
+      scheme.primary.withOpacity(isDark ? 0.95 : 0.80),
+      scheme.secondary.withOpacity(isDark ? 0.95 : 0.80),
+    ];
 
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
-          colors: [TTColors.bgStart, TTColors.bgEnd],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: bgColors,
         ),
       ),
       child: Scaffold(
@@ -31,7 +206,7 @@ class ProfileScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // top row
+                // ---------- Top row ----------
                 Row(
                   children: [
                     IconButton(
@@ -51,7 +226,10 @@ class ProfileScreen extends StatelessWidget {
                         border: Border.all(color: Colors.white, width: 2),
                       ),
                       child: IconButton(
-                        icon: const Icon(Icons.notifications_none, color: Colors.white),
+                        icon: const Icon(
+                          Icons.notifications_none,
+                          color: Colors.white,
+                        ),
                         onPressed: () {
                           context.go('/notifications');
                         },
@@ -61,67 +239,170 @@ class ProfileScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
 
-                // avatar
+                // ---------- Avatar ----------
                 Center(
                   child: Container(
-                    width: 120, height: 120,
+                    width: 120,
+                    height: 120,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white.withOpacity(.25), width: 2),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(.25),
+                        width: 2,
+                      ),
                     ),
                     alignment: Alignment.center,
-                    child: const Icon(Icons.account_circle, size: 110, color: Colors.white),
+                    child: _avatarUrl != null && _avatarUrl!.isNotEmpty
+                        ? ClipOval(
+                            child: Image.network(
+                              _avatarUrl!,
+                              width: 112,
+                              height: 112,
+                              fit: BoxFit.cover,
+                            ),
+                          )
+                        : const Icon(
+                            Icons.account_circle,
+                            size: 110,
+                            color: Colors.white,
+                          ),
                   ),
                 ),
                 const SizedBox(height: 16),
 
-                // name/email
+                // ---------- Name / Email ----------
                 Center(
-                  child: Text(name,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            color: Colors.white, fontWeight: FontWeight.w800)),
+                  child: Text(
+                    name,
+                    style: Theme.of(context)
+                        .textTheme
+                        .headlineSmall
+                        ?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Center(
-                  child: Text(email,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: TTColors.cB7EDFF, fontWeight: FontWeight.w600)),
+                  child: Text(
+                    email,
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(
+                          color: TTColors.cB7EDFF,
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
                 ),
-
                 const SizedBox(height: 20),
 
-                // balance
+                // ---------- Balance ----------
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text('Balance',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              color: Colors.white, fontWeight: FontWeight.w600)),
-                    const SizedBox(width: 12),
-                    Text(balanceText,
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                              color: const Color(0xFFFF6E40), fontWeight: FontWeight.w800)),
+                    Text(
+                      t.balanceLabel,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleLarge
+                          ?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                    const SizedBox(width: 8),
+                    FutureBuilder<double>(
+                      future: _balanceFuture,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState !=
+                            ConnectionState.done) {
+                          return const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          );
+                        }
+
+                        if (snapshot.hasError) {
+                          return Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.error_outline,
+                                  color: Colors.orangeAccent, size: 20),
+                              const SizedBox(width: 4),
+                              Text(
+                                t.errorLabel,
+                                style: const TextStyle(
+                                  color: Colors.orangeAccent,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          );
+                        }
+
+                        final value = snapshot.data ?? 0;
+                        final positive = value >= 0;
+                        final text = value.toStringAsFixed(0);
+
+                        return Text(
+                          text,
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
+                              ?.copyWith(
+                                color: positive
+                                    ? const Color(0xFF00E676)
+                                    : const Color(0xFFFF6E40),
+                                fontWeight: FontWeight.w800,
+                              ),
+                        );
+                      },
+                    ),
                   ],
                 ),
 
                 const SizedBox(height: 24),
 
-                // menu
-                _Menu(label: 'Edit Profile', onTap: () {}),
+                // ---------- Menu ----------
+                _Menu(label: t.profileEdit, onTap: _openEditProfile),
                 const Divider(color: Colors.white24, height: 24),
-                _Menu(label: 'History', onTap: () {}),
+                _Menu(
+                  label: t.profileHistory,
+                  onTap: () => context.push('/my-history'),
+                ),
                 const Divider(color: Colors.white24, height: 24),
-                _Menu(label: 'Language', onTap: () {}),
+                _Menu(
+                  label: t.profileLanguage,
+                  onTap: _openLanguageChooser,
+                ),
                 const Divider(color: Colors.white24, height: 24),
-                _Menu(label: 'App Theme', onTap: () {}),
+                _Menu(
+                  label:
+                      '${t.profileTheme} (${isDark ? t.themeDark : t.themeLight})',
+                  onTap: _openThemeChooser,
+                ),
 
                 const Spacer(),
 
-                // sign out
+                // ---------- Sign out ----------
                 Center(
                   child: Container(
                     decoration: const BoxDecoration(
-                      boxShadow: [BoxShadow(blurRadius: 18, offset: Offset(0, 8), color: Color(0x330DBCF6))],
+                      boxShadow: [
+                        BoxShadow(
+                          blurRadius: 18,
+                          offset: Offset(0, 8),
+                          color: Color(0x330DBCF6),
+                        ),
+                      ],
                     ),
                     child: SizedBox(
                       width: 220,
@@ -129,14 +410,19 @@ class ProfileScreen extends StatelessWidget {
                         style: FilledButton.styleFrom(
                           backgroundColor: TTColors.primary,
                           padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
                         ),
                         onPressed: () async {
                           await context.read<AuthService>().signOut();
                           if (!context.mounted) return;
                           context.go('/login');
                         },
-                        child: const Text('Sign Out', style: TextStyle(fontWeight: FontWeight.w700)),
+                        child: Text(
+                          t.signOut,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
                       ),
                     ),
                   ),
@@ -164,9 +450,13 @@ class _Menu extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(
           children: [
-            Text(label,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.white, fontWeight: FontWeight.w500)),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                  ),
+            ),
             const Spacer(),
             const Icon(Icons.chevron_right, color: Colors.white70),
           ],
