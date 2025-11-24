@@ -6,8 +6,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app_router.dart';
 import 'auth_service.dart';
+import 'services/notification_api_service.dart';
+import 'app_router.dart';
+import 'theme.dart';
 import 'language_provider.dart';
-import 'mock_store.dart';
+// import 'mock_store.dart';
 import 'theme_provider.dart';
 
 Future<void> main() async {
@@ -40,9 +43,10 @@ class Root extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthService()),
-        ChangeNotifierProvider(create: (_) => MockStore()..seed()),
+        ChangeNotifierProvider(create: (_) => NotificationApiService()),        
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
+        // ChangeNotifierProvider(create: (_) => MockStore()..seed()),
       ],
       child: const TidTungApp(),
     );

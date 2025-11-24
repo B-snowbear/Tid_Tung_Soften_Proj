@@ -7,10 +7,11 @@ import 'screens/register_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/protected_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/trip_detail_screen.dart'; // ⬅️ NEW
+import 'screens/notification_screen.dart';
 import 'screens/forgot_password_screen.dart';
 import 'screens/reset_password_screen.dart';
 import 'screens/otp_screen.dart';
-import 'screens/trip_detail_screen.dart';
 import 'screens/edit_profile_screen.dart';
 import 'ui/billing/my_paid_history_page.dart';
 import 'ui/billing/trip_report_page.dart'; // 👈 เดี๋ยวเราจะทำไฟล์หน้านี้
@@ -97,6 +98,10 @@ GoRouter buildRouter(BuildContext rootContext) {
       GoRoute(
         path: '/reset-password',
         builder: (_, __) => const ResetPasswordScreen(),
+      ),
+      GoRoute(
+        path: '/notifications', 
+        builder: (context, state) => const NotificationScreen(),
       ),
       GoRoute(
         path: '/trip/:id/report',
