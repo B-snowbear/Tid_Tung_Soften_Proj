@@ -2,7 +2,6 @@ import express from "express";
 import crypto from "crypto";
 const router = express.Router();
 
-
 // POST /api/invite/create   { trip_id }
 router.post("/create", async (req, res) => {
   const { trip_id } = req.body;
@@ -53,7 +52,7 @@ router.post("/join", async (req, res) => {
     `).eq("id", invite.trip_id)
     .single(); 
 
-  if (tripErrorError) {
+  if (tripError) {
     console.error("Error fetching trip members for notification:", membersError.message);
     return res.status(500).json({ error: "Failed to notify trip members" });
   }

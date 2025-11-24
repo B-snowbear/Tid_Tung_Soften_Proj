@@ -211,7 +211,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     IconButton(
                       icon: const Icon(Icons.arrow_back, color: Colors.white),
-                      onPressed: () => context.pop(),
+                      onPressed: () {
+                        if (context.canPop()) {
+                          context.pop();
+                        } else {
+                          context.go('/protected');
+                        }
+                      },
                     ),
                     const Spacer(),
                     Container(
@@ -225,7 +231,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           color: Colors.white,
                         ),
                         onPressed: () {
-                          _showSnack(t.notificationsComingSoon);
+                          context.go('/notifications');
                         },
                       ),
                     ),
@@ -410,6 +416,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         onPressed: () async {
                           await context.read<AuthService>().signOut();
+                          if (!context.mounted) return;
                           context.go('/login');
                         },
                         child: Text(

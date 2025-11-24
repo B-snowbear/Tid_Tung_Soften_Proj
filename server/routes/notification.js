@@ -10,7 +10,8 @@ router.get("/", async (req, res) => {
       .from("notifications")
       .select("*")
       .eq("user_id", userId)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(25); // limit to latest 25 notifications
 
     if (error) throw error;
 
