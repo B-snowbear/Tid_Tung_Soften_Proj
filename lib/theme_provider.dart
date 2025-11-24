@@ -1,15 +1,18 @@
-// lib/theme_provider.dart
 import 'package:flutter/material.dart';
 import 'theme.dart';
 
+/// โหมดธีมของแอป
 enum AppThemeMode { dark, light }
 
 class ThemeProvider extends ChangeNotifier {
-  AppThemeMode _mode = AppThemeMode.dark; // ค่าเริ่มต้น
+  AppThemeMode _mode = AppThemeMode.dark;
 
   AppThemeMode get mode => _mode;
+
+  /// ใช้เช็กง่าย ๆ ว่าตอนนี้เป็นโหมดมืดไหม
   bool get isDark => _mode == AppThemeMode.dark;
 
+  /// คืนค่าธีมปัจจุบันให้ MaterialApp ใช้
   ThemeData get theme {
     switch (_mode) {
       case AppThemeMode.light:
@@ -20,16 +23,15 @@ class ThemeProvider extends ChangeNotifier {
     }
   }
 
-  void toggleTheme() {
-    _mode =
-        _mode == AppThemeMode.dark ? AppThemeMode.light : AppThemeMode.dark;
+  /// เซ็ตโหมดธีมแบบกำหนดเอง
+  void setMode(AppThemeMode mode) {
+    if (_mode == mode) return; // ถ้าเหมือนเดิมไม่ต้อง notify
+    _mode = mode;
     notifyListeners();
   }
 
-  /// ใช้เปลี่ยนโหมดแบบกำหนดค่าได้ตรง ๆ
-  void setMode(AppThemeMode newMode) {
-    if (_mode == newMode) return;
-    _mode = newMode;
-    notifyListeners();
+  /// toggle สลับ dark <-> light
+  void toggle() {
+    setMode(isDark ? AppThemeMode.light : AppThemeMode.dark);
   }
 }

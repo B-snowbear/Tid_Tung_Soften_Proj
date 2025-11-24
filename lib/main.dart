@@ -1,25 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'auth_service.dart';
-import 'mock_store.dart';
 import 'app_router.dart';
-import 'theme_provider.dart';   // 👈 NEW
-import 'theme.dart';
+import 'auth_service.dart';
+import 'language_provider.dart';
+import 'mock_store.dart';
+import 'theme_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: "assets/.env");
+  await dotenv.load(fileName: 'assets/.env');
 
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL']!,
     anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
 
-  // Listen Supabase Password Recovery
+  // handle password recovery redirect
   Supabase.instance.client.auth.onAuthStateChange.listen((data) {
     if (data.event == AuthChangeEvent.passwordRecovery) {
       final ctx = rootNavigatorKey.currentContext;
@@ -41,7 +41,8 @@ class Root extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthService()),
         ChangeNotifierProvider(create: (_) => MockStore()..seed()),
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),   // 👈 NEW
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => LanguageProvider()),
       ],
       child: const TidTungApp(),
     );
@@ -54,13 +55,12 @@ class TidTungApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final router = buildRouter(context);
+    final themeProvider = context.watch<ThemeProvider>();
+    final langProvider = context.watch<LanguageProvider>();
 
     return MaterialApp.router(
-      title: 'Tid Tung',
-      
-      // 👇 ใช้ ThemeProvider แทน buildAppTheme()
-      theme: context.watch<ThemeProvider>().theme,
-
+      title: langProvider.text.appTitle,
+      theme: themeProvider.theme,
       routerConfig: router,
       debugShowCheckedModeBanner: false,
     );

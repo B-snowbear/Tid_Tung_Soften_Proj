@@ -1,13 +1,13 @@
-// lib/screens/profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../auth_service.dart';
+import '../language_provider.dart';
+import '../services/expense_service.dart';
 import '../theme.dart';
 import '../theme_provider.dart';
-import '../services/expense_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -64,7 +64,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _openThemeChooser() async {
     final themeProvider = context.read<ThemeProvider>();
-    final isDark = themeProvider.isDark;
+    final lang = context.read<LanguageProvider>().text;
 
     await showModalBottomSheet(
       context: context,
@@ -73,19 +73,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (ctx) {
+        final isDark = themeProvider.isDark;
+
         return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const SizedBox(height: 8),
               Text(
-                'Select app theme',
+                lang.themeSheetTitle,
                 style: Theme.of(ctx).textTheme.titleMedium,
               ),
               const SizedBox(height: 4),
+
+              // Light
               ListTile(
                 leading: const Icon(Icons.light_mode),
-                title: const Text('Light'),
+                title: Text(lang.themeLight),
                 trailing: !isDark
                     ? const Icon(Icons.check, color: Colors.green)
                     : null,
@@ -94,9 +98,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Navigator.of(ctx).pop();
                 },
               ),
+
+              // Dark
               ListTile(
                 leading: const Icon(Icons.dark_mode),
-                title: const Text('Dark'),
+                title: Text(lang.themeDark),
                 trailing: isDark
                     ? const Icon(Icons.check, color: Colors.green)
                     : null,
@@ -113,15 +119,71 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Future<void> _openLanguageChooser() async {
+    final langProvider = context.read<LanguageProvider>();
+    final current = langProvider.language;
+    final texts = langProvider.text;
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              Text(
+                texts.languageSheetTitle,
+                style: Theme.of(ctx).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 4),
+
+              ListTile(
+                leading: const Icon(Icons.language),
+                title: Text(texts.languageEnglish),
+                trailing: current == AppLanguage.en
+                    ? const Icon(Icons.check, color: Colors.green)
+                    : null,
+                onTap: () {
+                  langProvider.setLanguage(AppLanguage.en);
+                  Navigator.of(ctx).pop();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.translate),
+                title: Text(texts.languageThai),
+                trailing: current == AppLanguage.th
+                    ? const Icon(Icons.check, color: Colors.green)
+                    : null,
+                onTap: () {
+                  langProvider.setLanguage(AppLanguage.th);
+                  Navigator.of(ctx).pop();
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
     final isDark = themeProvider.isDark;
 
+    final langProvider = context.watch<LanguageProvider>();
+    final t = langProvider.text;
+
     final name = _displayName ?? '';
     final email = _email ?? '';
 
-    // ใช้สีจาก theme ปัจจุบัน ทำให้ gradient เปลี่ยนตาม theme
+    // gradient ใช้สีจาก theme ปัจจุบัน
     final scheme = Theme.of(context).colorScheme;
     final bgColors = [
       scheme.primary.withOpacity(isDark ? 0.95 : 0.80),
@@ -163,7 +225,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           color: Colors.white,
                         ),
                         onPressed: () {
-                          _showSnack('Notifications coming soon');
+                          _showSnack(t.notificationsComingSoon);
                         },
                       ),
                     ),
@@ -235,7 +297,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      'Balance',
+                      t.balanceLabel,
                       style: Theme.of(context)
                           .textTheme
                           .titleLarge
@@ -265,13 +327,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         if (snapshot.hasError) {
                           return Row(
                             mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              Icon(Icons.error_outline,
+                            children: [
+                              const Icon(Icons.error_outline,
                                   color: Colors.orangeAccent, size: 20),
-                              SizedBox(width: 4),
+                              const SizedBox(width: 4),
                               Text(
-                                'Error',
-                                style: TextStyle(
+                                t.errorLabel,
+                                style: const TextStyle(
                                   color: Colors.orangeAccent,
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -281,7 +343,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         }
 
                         final value = snapshot.data ?? 0;
-                        final isPositive = value >= 0;
+                        final positive = value >= 0;
                         final text = value.toStringAsFixed(0);
 
                         return Text(
@@ -290,9 +352,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               .textTheme
                               .headlineSmall
                               ?.copyWith(
-                                color: isPositive
-                                    ? const Color(0xFF00E676) // เขียว
-                                    : const Color(0xFFFF6E40), // แดง
+                                color: positive
+                                    ? const Color(0xFF00E676)
+                                    : const Color(0xFFFF6E40),
                                 fontWeight: FontWeight.w800,
                               ),
                         );
@@ -304,20 +366,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 24),
 
                 // ---------- Menu ----------
-                _Menu(label: 'Edit Profile', onTap: _openEditProfile),
+                _Menu(label: t.profileEdit, onTap: _openEditProfile),
                 const Divider(color: Colors.white24, height: 24),
                 _Menu(
-                  label: 'History',
+                  label: t.profileHistory,
                   onTap: () => context.push('/my-history'),
                 ),
                 const Divider(color: Colors.white24, height: 24),
                 _Menu(
-                  label: 'Language',
-                  onTap: () => _showSnack('Language: coming soon'),
+                  label: t.profileLanguage,
+                  onTap: _openLanguageChooser,
                 ),
                 const Divider(color: Colors.white24, height: 24),
                 _Menu(
-                  label: 'App Theme (${isDark ? 'Dark' : 'Light'})',
+                  label:
+                      '${t.profileTheme} (${isDark ? t.themeDark : t.themeLight})',
                   onTap: _openThemeChooser,
                 ),
 
@@ -349,9 +412,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           await context.read<AuthService>().signOut();
                           context.go('/login');
                         },
-                        child: const Text(
-                          'Sign Out',
-                          style: TextStyle(fontWeight: FontWeight.w700),
+                        child: Text(
+                          t.signOut,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
                       ),
                     ),
@@ -382,10 +445,7 @@ class _Menu extends StatelessWidget {
           children: [
             Text(
               label,
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w500,
                   ),
