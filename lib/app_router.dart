@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-
 import 'auth_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
@@ -98,6 +97,14 @@ GoRouter buildRouter(BuildContext rootContext) {
       GoRoute(
         path: '/reset-password',
         builder: (_, __) => const ResetPasswordScreen(),
+      ),
+      GoRoute(
+        path: '/trip/:id/report',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          final name = state.extra as String? ?? 'Trip report';
+          return TripReportPage(tripId: id, tripName: name);
+        },
       ),
       GoRoute(
         path: '/otp',
