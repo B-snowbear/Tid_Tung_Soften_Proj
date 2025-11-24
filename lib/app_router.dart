@@ -14,6 +14,7 @@ import 'screens/otp_screen.dart';
 import 'screens/trip_detail_screen.dart';
 import 'screens/edit_profile_screen.dart';
 import 'ui/billing/my_paid_history_page.dart';
+import 'ui/billing/trip_report_page.dart'; // 👈 เดี๋ยวเราจะทำไฟล์หน้านี้
 
 /// 👇 global navigator key (ใช้ใน main.dart)
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -23,31 +24,38 @@ GoRouter buildRouter(BuildContext rootContext) {
     navigatorKey: rootNavigatorKey,
     initialLocation: '/login',
     refreshListenable: rootContext.read<AuthService>(),
+
     redirect: (context, state) {
       final authed = rootContext.read<AuthService>().signedIn;
       final loc = state.matchedLocation;
 
-      // ถ้ายังไม่ล็อกอิน แต่พยายามเข้าเพจที่ต้องล็อกอิน → เด้งไป /login
-      if (!authed && (loc == '/protected' || loc == '/profile')) {
+      // ---------- ถ้ายังไม่ล็อกอิน ----------
+      // กันทุกเพจที่ต้องล็อกอิน: protected, profile, trip*, my-history
+      if (!authed &&
+          (loc == '/protected' ||
+           loc == '/profile' ||
+           loc == '/my-history' ||
+           loc.startsWith('/trip'))) {
         return '/login';
       }
 
-      // ถ้าล็อกอินแล้ว แต่ดันไปหน้า login/register หรือ callback OAuth → เด้งไป /protected
+      // ---------- ถ้าล็อกอินแล้ว ----------
+      // ไม่ให้กลับไปหน้า login / register / OAuth callback
       if (authed &&
           (loc == '/login' ||
-              loc == '/register' ||
-              loc.startsWith('io.supabase.flutter'))) {
+           loc == '/register' ||
+           loc.startsWith('io.supabase.flutter'))) {
         return '/protected';
       }
 
-      // ถ้ายังไม่ล็อกอิน → อนุญาตเฉพาะ public routes ด้านล่าง
+      // public routes ที่อนุญาตตอนยังไม่ล็อกอิน
       if (!authed &&
           !(loc == '/login' ||
-              loc == '/register' ||
-              loc == '/forgot-password' ||
-              loc == '/reset-password' ||
-              loc == '/otp' ||
-              loc == '/protected-status')) {
+            loc == '/register' ||
+            loc == '/forgot-password' ||
+            loc == '/reset-password' ||
+            loc == '/otp' ||
+            loc == '/protected-status')) {
         return '/login';
       }
 
@@ -77,11 +85,11 @@ GoRouter buildRouter(BuildContext rootContext) {
       ),
       GoRoute(
         path: '/profile/edit',
-        builder: (context, state) => const EditProfileScreen(),
+        builder: (_, __) => const EditProfileScreen(),
       ),
       GoRoute(
         path: '/my-history',
-        builder: (context, state) => const MyPaidHistoryPage(),
+        builder: (_, __) => const MyPaidHistoryPage(),
       ),
       GoRoute(
         path: '/forgot-password',
@@ -103,13 +111,23 @@ GoRouter buildRouter(BuildContext rootContext) {
         },
       ),
 
-      // ⬇️ Trip Detail route (รับ extra เป็น tripName)
+      // ---------- Trip Detail ----------
       GoRoute(
         path: '/trip/:id',
         builder: (context, state) {
           final id = state.pathParameters['id']!;
           final name = state.extra as String? ?? 'Trip';
           return TripDetailScreen(tripId: id, tripName: name);
+        },
+      ),
+
+      // ---------- Trip Report (Reports & Charts) ----------
+      GoRoute(
+        path: '/trip/:id/report',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          final name = state.extra as String? ?? 'Trip';
+          return TripReportPage(tripId: id, tripName: name);
         },
       ),
     ],

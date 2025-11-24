@@ -72,10 +72,9 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final dateFmt = DateFormat('d MMM y');
-    final dateRange =
-        (widget.startDate != null && widget.endDate != null)
-            ? '${dateFmt.format(widget.startDate!)} – ${dateFmt.format(widget.endDate!)}'
-            : 'No date info';
+    final dateRange = (widget.startDate != null && widget.endDate != null)
+        ? '${dateFmt.format(widget.startDate!)} – ${dateFmt.format(widget.endDate!)}'
+        : 'No date info';
 
     return Container(
       decoration: const BoxDecoration(
@@ -226,7 +225,8 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                       itemCount: members.length,
                       itemBuilder: (context, i) {
                         final member = members[i];
-                        final profile = member['profiles'] ?? {};
+                        final profile =
+                            (member['profiles'] ?? {}) as Map<String, dynamic>;
                         final role = member['role'];
                         final name = profile['full_name'] ??
                             (profile['email']?.split('@').first ?? 'Unknown');
@@ -277,67 +277,91 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
 
               const SizedBox(height: 12),
 
-              // ---------- Action buttons ----------
+              // ---------- Action buttons (2x2 grid style) ----------
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _ActionButton(
-                    icon: Icons.receipt_long,
-                    label: 'Create Bill',
-                    onTap: () async {
-                      final sb = Supabase.instance.client;
-                      final me = sb.auth.currentUser!;
+                  Expanded(
+                    child: _ActionButton(
+                      icon: Icons.receipt_long,
+                      label: 'Create Bill',
+                      onTap: () async {
+                        final sb = Supabase.instance.client;
+                        final me = sb.auth.currentUser!;
 
-                      // ใช้ข้อมูลสมาชิกที่โหลดมาจาก _membersFuture
-                      final membersRaw = await _membersFuture;
-                      final members =
-                          membersRaw.map<MemberOption>((m) {
-                        final p =
-                            (m['profiles'] ?? {}) as Map<String, dynamic>;
-                        final id = p['id'] as String;
-                        final name = (p['full_name'] as String?) ??
-                            (p['email'] as String? ?? 'Member');
-                        return MemberOption(id, name);
-                      }).toList();
+                        // ใช้ข้อมูล members ที่โหลดไว้แล้วจาก _membersFuture
+                        final membersRaw = await _membersFuture;
+                        final memberOptions =
+                            membersRaw.map<MemberOption>((m) {
+                          final p = (m['profiles'] ?? {})
+                              as Map<String, dynamic>;
+                          final id = p['id'] as String;
+                          final name = (p['full_name'] as String?) ??
+                              (p['email'] as String? ?? 'Member');
+                          return MemberOption(id, name);
+                        }).toList();
 
-                      if (!mounted) return;
-                      await showCreateBillSheet(
-                        context,
-                        tripId: widget.tripId,
-                        payerProfileId: me.id,
-                        members: members,
-                      );
+                        if (!mounted) return;
+                        await showCreateBillSheet(
+                          context,
+                          tripId: widget.tripId,
+                          payerProfileId: me.id,
+                          members: memberOptions,
+                        );
 
-                      _reload();
-                    },
+                        _reload();
+                      },
+                    ),
                   ),
-                  _ActionButton(
-                    icon: Icons.account_balance_wallet,
-                    label: 'See Balance',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              BalancePage(tripId: widget.tripId),
-                        ),
-                      );
-                    },
-                  ),
-                  _ActionButton(
-                    icon: Icons.history,
-                    label: 'History',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ExpenseHistoryPage(
-                            tripId: widget.tripId,
-                            tripName: widget.tripName,
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _ActionButton(
+                      icon: Icons.account_balance_wallet,
+                      label: 'See Balance',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                BalancePage(tripId: widget.tripId),
                           ),
-                        ),
-                      );
-                    },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: _ActionButton(
+                      icon: Icons.history,
+                      label: 'History',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ExpenseHistoryPage(
+                              tripId: widget.tripId,
+                              tripName: widget.tripName,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _ActionButton(
+                      icon: Icons.pie_chart,
+                      label: 'Report',
+                      onTap: () {
+                        context.push(
+                          '/trip/${widget.tripId}/report',
+                          extra: widget.tripName,
+                        );
+                      },
+                    ),
                   ),
                 ],
               ),
@@ -389,26 +413,21 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: FilledButton.icon(
-          onPressed: onTap,
-          style: FilledButton.styleFrom(
-            backgroundColor: TTColors.c0DBCF6,
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-          ),
-          icon: Icon(icon, color: Colors.white),
-          label: Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+    return FilledButton.icon(
+      onPressed: onTap,
+      style: FilledButton.styleFrom(
+        backgroundColor: TTColors.c0DBCF6,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
+      ),
+      icon: Icon(icon, color: Colors.white),
+      label: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
