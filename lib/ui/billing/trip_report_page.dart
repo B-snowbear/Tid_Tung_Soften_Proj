@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 
 import '../../services/expense_service.dart';
@@ -14,9 +15,6 @@ class TripReportPage extends StatelessWidget {
     required this.tripName,
   });
 
-  String _money(double v) =>
-      NumberFormat.currency(symbol: '฿', decimalDigits: 2).format(v);
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -29,233 +27,421 @@ class TripReportPage extends StatelessWidget {
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        body: SafeArea(
-          child: Column(
-            children: [
-              // AppBar-like row
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon:
-                          const Icon(Icons.arrow_back, color: Colors.white),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        'Report • $tripName',
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleLarge
-                            ?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                            ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          title: Text('Report — $tripName'),
+          centerTitle: true,
+        ),
+        body: FutureBuilder<TripReportData>(
+          future: ExpenseService.getTripReport(tripId),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              );
+            }
+
+            if (snapshot.hasError) {
+              return Center(
+                child: Text(
+                  'Error: ${snapshot.error}',
+                  style: const TextStyle(color: Colors.redAccent),
                 ),
-              ),
-              const SizedBox(height: 8),
+              );
+            }
 
-              Expanded(
-                child: FutureBuilder<TripReport>(
-                  future: ExpenseService.getTripReport(tripId),
-                  builder: (context, snap) {
-                    if (snap.connectionState != ConnectionState.done) {
-                      return const Center(
-                        child: CircularProgressIndicator(
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      );
-                    }
-                    if (snap.hasError || snap.data == null) {
-                      return Center(
-                        child: Text(
-                          'Failed to load report',
-                          style: const TextStyle(color: Colors.orangeAccent),
-                        ),
-                      );
-                    }
+            final data = snapshot.data!;
+            final totalFmt =
+                NumberFormat('#,##0.00', 'en_US').format(data.totalThb);
 
-                    final report = snap.data!;
+            final hasCategoryData =
+                data.byCategory.values.any((v) => v > 0.0);
+            final hasPayerData =
+                data.byPayer.values.any((v) => v > 0.0);
 
-                    return ListView(
-                      padding:
-                          const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            return SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // ---------- Total summary ----------
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(18),
+                      color: Colors.black.withOpacity(0.25),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // 1) Total card
-                        _SummaryCard(
-                          title: 'Total expenses',
-                          value: _money(report.totalExpensesThb),
+                        const Text(
+                          'Trip Summary',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Total expenses',
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelLarge
+                              ?.copyWith(color: TTColors.cB7EDFF),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '$totalFmt THB',
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
+                              ?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // ---------- Pie chart: spending by category ----------
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(18),
+                      color: Colors.black.withOpacity(0.25),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Spending by category',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                         const SizedBox(height: 12),
-
-                        // 2) Member contributions
-                        Text(
-                          'Contributions per member',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
+                        if (!hasCategoryData)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 8),
+                            child: Text(
+                              'No data yet',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
                               ),
-                        ),
-                        const SizedBox(height: 6),
-                        ...report.contributions.map(
-                          (c) => _RowTile(
-                            left: c.name,
-                            right: _money(c.totalPaidThb),
+                            ),
+                          )
+                        else
+                          SizedBox(
+                            height: 220,
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: PieChart(
+                                    PieChartData(
+                                      sectionsSpace: 2,
+                                      centerSpaceRadius: 40,
+                                      sections: _buildCategorySections(
+                                        data.byCategory,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                _CategoryLegend(byCategory: data.byCategory),
+                              ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        // 3) Owed / received (balances)
-                        Text(
-                          'Amount owed / received',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                              ),
-                        ),
-                        const SizedBox(height: 6),
-                        ...report.balances.map((b) {
-                          final bal = b.balance;
-                          final color = bal >= 0
-                              ? const Color(0xFF00E676)
-                              : const Color(0xFFFF6E40);
-                          final label = bal >= 0 ? 'to receive' : 'to pay';
-                          return _RowTile(
-                            left: b.name,
-                            right: '${_money(bal.abs())} $label',
-                            valueColor: color,
-                          );
-                        }),
-                        const SizedBox(height: 16),
-
-                        // 4) Category breakdown
-                        Text(
-                          'Spending by category',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                              ),
-                        ),
-                        const SizedBox(height: 6),
-                        ...report.categories.map(
-                          (cat) => _RowTile(
-                            left: cat.category,
-                            right: _money(cat.totalThb),
-                          ),
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        // TODO: charts section (future step)
-                        // คุณสามารถเอา fl_chart มาใช้วาด pie / bar จาก report.categories & report.contributions
                       ],
-                    );
-                  },
-                ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // ---------- Bar chart: contributions per member ----------
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(18),
+                      color: Colors.black.withOpacity(0.25),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Contributions per member',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        if (!hasPayerData)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 8),
+                            child: Text(
+                              'No data yet',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
+                            ),
+                          )
+                        else
+                          SizedBox(
+                            height: 260,
+                            child: _PayerBarChart(byPayer: data.byPayer),
+                          ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // ---------- Member balances list ----------
+                  
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(18),
+                      color: Colors.black.withOpacity(0.25),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Amount owed / received per member',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Column(
+                          children: data.memberBalances.map((mb) {
+                            final balFmt = mb.balance.toStringAsFixed(2);
+                            final isPositive = mb.balance >= 0;
+                            return ListTile(
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                              title: Text(
+                                mb.name,
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                              trailing: Text(
+                                (isPositive ? '+ ' : '- ') +
+                                    balFmt.replaceFirst('-', '') +
+                                    ' THB',
+                                style: TextStyle(
+                                  color: isPositive
+                                      ? const Color(0xFF00E676)
+                                      : const Color(0xFFFF6E40),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
   }
+
+  // ---------- Helpers for PieChart ----------
+  List<PieChartSectionData> _buildCategorySections(
+      Map<String, double> byCategory) {
+    final total = byCategory.values.fold<double>(0.0, (a, b) => a + b);
+    if (total <= 0) return [];
+
+    final List<Color> palette = [
+      const Color(0xFF0DBCF6),
+      const Color(0xFF1877F2),
+      const Color(0xFFFFD54F),
+      const Color(0xFFFF6E40),
+      const Color(0xFF66BB6A),
+      const Color(0xFFAB47BC),
+    ];
+
+    int i = 0;
+    return byCategory.entries.map((e) {
+      final value = e.value;
+      final percent = (value / total) * 100;
+      final color = palette[i % palette.length];
+      i++;
+
+      return PieChartSectionData(
+        color: color,
+        value: value,
+        title: '${percent.toStringAsFixed(0)}%',
+        radius: 60,
+        titleStyle: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      );
+    }).toList();
+  }
 }
 
-class _SummaryCard extends StatelessWidget {
-  final String title;
-  final String value;
+// ---------- Legend widget ----------
+class _CategoryLegend extends StatelessWidget {
+  final Map<String, double> byCategory;
 
-  const _SummaryCard({
-    required this.title,
-    required this.value,
-  });
+  const _CategoryLegend({required this.byCategory});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF212121).withOpacity(.9),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-            ),
+    if (byCategory.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final total = byCategory.values.fold<double>(0.0, (a, b) => a + b);
+    final List<Color> palette = [
+      const Color(0xFF0DBCF6),
+      const Color(0xFF1877F2),
+      const Color(0xFFFFD54F),
+      const Color(0xFFFF6E40),
+      const Color(0xFF66BB6A),
+      const Color(0xFFAB47BC),
+    ];
+
+    int i = 0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: byCategory.entries.map((e) {
+        final color = palette[i % palette.length];
+        i++;
+        final percent = total > 0 ? (e.value / total) * 100 : 0;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '${e.key} (${percent.toStringAsFixed(0)}%)',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                ),
+              ),
+            ],
           ),
-          const Spacer(),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
+        );
+      }).toList(),
     );
   }
 }
 
-class _RowTile extends StatelessWidget {
-  final String left;
-  final String right;
-  final Color? valueColor;
+// ---------- BarChart widget ----------
+class _PayerBarChart extends StatelessWidget {
+  final Map<String, double> byPayer;
 
-  const _RowTile({
-    required this.left,
-    required this.right,
-    this.valueColor,
-  });
+  const _PayerBarChart({required this.byPayer});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding:
-          const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              left,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
+    final payers = byPayer.keys.toList();
+    final values = byPayer.values.toList();
+
+    if (payers.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final maxY =
+        values.fold<double>(0.0, (prev, v) => v > prev ? v : prev) * 1.2;
+
+    return BarChart(
+      BarChartData(
+        maxY: maxY == 0 ? 1 : maxY,
+        barTouchData: BarTouchData(enabled: true),
+        titlesData: FlTitlesData(
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 32,
+              getTitlesWidget: (value, meta) {
+                return Text(
+                  value.toInt().toString(),
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 10,
+                  ),
+                );
+              },
+            ),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 40,
+              getTitlesWidget: (value, meta) {
+                final index = value.toInt();
+                if (index < 0 || index >= payers.length) {
+                  return const SizedBox.shrink();
+                }
+                final name = payers[index];
+                return Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    name,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 10,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+              },
+            ),
+          ),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+        ),
+        gridData: FlGridData(show: true, drawVerticalLine: false),
+        borderData: FlBorderData(show: false),
+        barGroups: List.generate(payers.length, (index) {
+          final v = values[index];
+          return BarChartGroupData(
+            x: index,
+            barRods: [
+              BarChartRodData(
+                toY: v,
+                color: TTColors.c0DBCF6,
+                width: 14,
+                borderRadius: BorderRadius.circular(4),
               ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            right,
-            style: TextStyle(
-              color: valueColor ?? Colors.white,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
+            ],
+          );
+        }),
       ),
     );
   }
