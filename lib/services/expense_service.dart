@@ -21,6 +21,7 @@ class ExpenseService {
       final num v = rows.first['thb_per_1'] as num;
       return v.toDouble();
     }
+    // กรณีไม่เจอเรทเลย
     return 1.0;
   }
 
@@ -111,7 +112,7 @@ class ExpenseService {
     }).toList();
   }
 
-  /// ---- Expense History ----
+  /// ---- Expense History (per trip) ----
   static Future<List<ExpenseItem>> getTripExpenses(String tripId) async {
     final rows = await _sb
         .from('expenses')
@@ -167,13 +168,12 @@ class ExpenseService {
 
   /// ======================================================
   /// 🔥 รวมยอด balance ทั้งหมดของ user จากทุกทริป
-  ///   ใช้ v_trip_balances โดยตรง (ไม่ใช้ v_user_total_balance แล้ว)
+  ///   ใช้ v_trip_balances โดยตรง
   /// ======================================================
   static Future<double> getMyTotalBalance() async {
     final uid = _sb.auth.currentUser?.id;
     if (uid == null) return 0.0;
 
-    // ดึง balance ทุกแถวของ user นี้จาก view v_trip_balances
     final rows = await _sb
         .from('v_trip_balances')
         .select('balance')
@@ -186,8 +186,48 @@ class ExpenseService {
         total += b.toDouble();
       }
     }
-
     return total;
+  }
+
+  /// ======================================================
+  /// 🔥 History: บิลที่เราเป็นคนจ่ายเองทุกทริป
+  /// ======================================================
+  static Future<List<MyPaidExpenseItem>> getMyPaidExpenses() async {
+    final uid = _sb.auth.currentUser?.id;
+    if (uid == null) return [];
+
+    final rows = await _sb
+        .from('expenses')
+        .select('''
+          id,
+          trip_id,
+          amount,
+          currency,
+          amount_thb,
+          note,
+          created_at,
+          is_settled,
+          trip:trips!expenses_trip_id_fkey (
+            name
+          )
+        ''')
+        .eq('profile_id', uid)
+        .order('created_at', ascending: false);
+
+    return rows.map<MyPaidExpenseItem>((r) {
+      final trip = (r['trip'] ?? {}) as Map<String, dynamic>;
+      return MyPaidExpenseItem(
+        id: r['id'] as String,
+        tripId: r['trip_id'] as String,
+        tripName: (trip['name'] as String?) ?? 'Unnamed trip',
+        amount: (r['amount'] as num).toDouble(),
+        currency: (r['currency'] as String?) ?? 'THB',
+        amountThb: (r['amount_thb'] as num).toDouble(),
+        note: r['note'] as String?,
+        createdAt: DateTime.parse(r['created_at'] as String),
+        isSettled: (r['is_settled'] as bool?) ?? false,
+      );
+    }).toList();
   }
 }
 
@@ -226,6 +266,31 @@ class ExpenseItem {
     required this.tripId,
     required this.payerId,
     required this.payerName,
+    required this.amount,
+    required this.currency,
+    required this.amountThb,
+    required this.note,
+    required this.createdAt,
+    required this.isSettled,
+  });
+}
+
+/// ใช้สำหรับ History รวมทุกทริปที่เราเป็นคนจ่าย
+class MyPaidExpenseItem {
+  final String id;
+  final String tripId;
+  final String tripName;
+  final double amount;
+  final String currency;
+  final double amountThb;
+  final String? note;
+  final DateTime createdAt;
+  final bool isSettled;
+
+  MyPaidExpenseItem({
+    required this.id,
+    required this.tripId,
+    required this.tripName,
     required this.amount,
     required this.currency,
     required this.amountThb,

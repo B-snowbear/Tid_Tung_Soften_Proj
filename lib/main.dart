@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:go_router/go_router.dart';    
+import 'package:go_router/go_router.dart';
+
 import 'auth_service.dart';
 import 'mock_store.dart';
 import 'app_router.dart';
+import 'theme_provider.dart';   // 👈 NEW
 import 'theme.dart';
 
 Future<void> main() async {
@@ -17,10 +19,9 @@ Future<void> main() async {
     anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
 
-  // 👇 Listen for Supabase password recovery event
+  // Listen Supabase Password Recovery
   Supabase.instance.client.auth.onAuthStateChange.listen((data) {
     if (data.event == AuthChangeEvent.passwordRecovery) {
-      // When user clicks reset link, Supabase logs them in and fires this
       final ctx = rootNavigatorKey.currentContext;
       if (ctx != null) {
         GoRouter.of(ctx).go('/reset-password');
@@ -31,7 +32,6 @@ Future<void> main() async {
   runApp(const Root());
 }
 
-
 class Root extends StatelessWidget {
   const Root({super.key});
 
@@ -39,8 +39,9 @@ class Root extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-  ChangeNotifierProvider(create: (_) => AuthService()),
-  ChangeNotifierProvider(create: (_) => MockStore()..seed()),
+        ChangeNotifierProvider(create: (_) => AuthService()),
+        ChangeNotifierProvider(create: (_) => MockStore()..seed()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),   // 👈 NEW
       ],
       child: const TidTungApp(),
     );
@@ -52,10 +53,14 @@ class TidTungApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final router = buildRouter(context); // see step 4 for redirect guard
+    final router = buildRouter(context);
+
     return MaterialApp.router(
       title: 'Tid Tung',
-      theme: buildAppTheme(),
+      
+      // 👇 ใช้ ThemeProvider แทน buildAppTheme()
+      theme: context.watch<ThemeProvider>().theme,
+
       routerConfig: router,
       debugShowCheckedModeBanner: false,
     );

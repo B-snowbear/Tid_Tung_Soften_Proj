@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'screens/forgot_password_screen.dart';
-import 'screens/reset_password_screen.dart';  // 👈 NEW
+
 import 'auth_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/protected_screen.dart';
 import 'screens/profile_screen.dart';
-import 'screens/trip_detail_screen.dart';
+import 'screens/forgot_password_screen.dart';
+import 'screens/reset_password_screen.dart';
 import 'screens/otp_screen.dart';
+import 'screens/trip_detail_screen.dart';
+import 'screens/edit_profile_screen.dart';
+import 'ui/billing/my_paid_history_page.dart';
 
-// 👇 NEW: a global navigator key we can use from main.dart
+/// 👇 global navigator key (ใช้ใน main.dart)
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
-
 
 GoRouter buildRouter(BuildContext rootContext) {
   return GoRouter(
@@ -25,38 +27,70 @@ GoRouter buildRouter(BuildContext rootContext) {
       final authed = rootContext.read<AuthService>().signedIn;
       final loc = state.matchedLocation;
 
-      // If not logged in and trying to access protected pages → send to /login
-      if (!authed && (loc == '/protected' || loc == '/profile')) return '/login';
+      // ถ้ายังไม่ล็อกอิน แต่พยายามเข้าเพจที่ต้องล็อกอิน → เด้งไป /login
+      if (!authed && (loc == '/protected' || loc == '/profile')) {
+        return '/login';
+      }
 
-      // If logged in and trying to access login/register or OAuth callback → send to /protected
+      // ถ้าล็อกอินแล้ว แต่ดันไปหน้า login/register หรือ callback OAuth → เด้งไป /protected
       if (authed &&
           (loc == '/login' ||
-          loc == '/register' ||
-          loc.startsWith('io.supabase.flutter'))) return '/protected';
+              loc == '/register' ||
+              loc.startsWith('io.supabase.flutter'))) {
+        return '/protected';
+      }
 
-      // If NOT logged in, only allow some public routes:
+      // ถ้ายังไม่ล็อกอิน → อนุญาตเฉพาะ public routes ด้านล่าง
       if (!authed &&
-        !(loc == '/login' ||
-          loc == '/register' ||
-          loc == '/forgot-password' ||
-          loc == '/reset-password' ||
-          loc == '/otp' ||                 // 👈 allow OTP screen
-          loc == '/protected-status')) {
-      return '/login';
-    }
+          !(loc == '/login' ||
+              loc == '/register' ||
+              loc == '/forgot-password' ||
+              loc == '/reset-password' ||
+              loc == '/otp' ||
+              loc == '/protected-status')) {
+        return '/login';
+      }
 
-
-      return null;
+      return null; // ไม่ redirect
     },
 
     routes: [
-      GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
-      GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
-      GoRoute(path: '/protected', builder: (_, __) => const DashboardScreen()),
-      GoRoute(path: '/protected-status', builder: (_, __) => const ProtectedScreen()),
-      GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
-      GoRoute(path: '/forgot-password', builder: (_, __) => const ForgotPasswordScreen()),
-      GoRoute(path: '/reset-password', builder: (_, __) => const ResetPasswordScreen()),
+      GoRoute(
+        path: '/login',
+        builder: (_, __) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/register',
+        builder: (_, __) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: '/protected',
+        builder: (_, __) => const DashboardScreen(),
+      ),
+      GoRoute(
+        path: '/protected-status',
+        builder: (_, __) => const ProtectedScreen(),
+      ),
+      GoRoute(
+        path: '/profile',
+        builder: (_, __) => const ProfileScreen(),
+      ),
+      GoRoute(
+        path: '/profile/edit',
+        builder: (context, state) => const EditProfileScreen(),
+      ),
+      GoRoute(
+        path: '/my-history',
+        builder: (context, state) => const MyPaidHistoryPage(),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        builder: (_, __) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: '/reset-password',
+        builder: (_, __) => const ResetPasswordScreen(),
+      ),
       GoRoute(
         path: '/otp',
         builder: (_, state) {
@@ -69,8 +103,7 @@ GoRouter buildRouter(BuildContext rootContext) {
         },
       ),
 
-
-      // ⬇️ NEW Trip Detail route
+      // ⬇️ Trip Detail route (รับ extra เป็น tripName)
       GoRoute(
         path: '/trip/:id',
         builder: (context, state) {
@@ -80,6 +113,7 @@ GoRouter buildRouter(BuildContext rootContext) {
         },
       ),
     ],
+
     errorBuilder: (_, __) => const LoginScreen(),
   );
 }

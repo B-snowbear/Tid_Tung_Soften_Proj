@@ -1,7 +1,7 @@
 import express from "express";
 import crypto from "crypto";
 const router = express.Router();
-import { pushNotification } from "../func/notify";
+
 
 // POST /api/invite/create   { trip_id }
 router.post("/create", async (req, res) => {

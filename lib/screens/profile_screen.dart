@@ -1,3 +1,4 @@
+// lib/screens/profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -5,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../auth_service.dart';
 import '../theme.dart';
+import '../theme_provider.dart';
 import '../services/expense_service.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -17,24 +19,121 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   late Future<double> _balanceFuture;
 
+  String? _displayName;
+  String? _email;
+  String? _avatarUrl;
+
   @override
   void initState() {
     super.initState();
+    _reloadUserInfo();
     _balanceFuture = ExpenseService.getMyTotalBalance();
+  }
+
+  void _reloadUserInfo() {
+    final user = Supabase.instance.client.auth.currentUser;
+    final email = user?.email ?? '';
+    final meta = user?.userMetadata ?? const {};
+
+    _email = email;
+    _displayName = (meta['name'] as String?) ?? email;
+    _avatarUrl = meta['avatar_url'] as String?;
+  }
+
+  void _reloadBalance() {
+    setState(() {
+      _balanceFuture = ExpenseService.getMyTotalBalance();
+    });
+  }
+
+  Future<void> _openEditProfile() async {
+    final updated = await context.push<bool>('/profile/edit');
+    if (updated == true) {
+      setState(() {
+        _reloadUserInfo();
+      });
+      _reloadBalance();
+    }
+  }
+
+  void _showSnack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg)),
+    );
+  }
+
+  Future<void> _openThemeChooser() async {
+    final themeProvider = context.read<ThemeProvider>();
+    final isDark = themeProvider.isDark;
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              Text(
+                'Select app theme',
+                style: Theme.of(ctx).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 4),
+              ListTile(
+                leading: const Icon(Icons.light_mode),
+                title: const Text('Light'),
+                trailing: !isDark
+                    ? const Icon(Icons.check, color: Colors.green)
+                    : null,
+                onTap: () {
+                  themeProvider.setMode(AppThemeMode.light);
+                  Navigator.of(ctx).pop();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.dark_mode),
+                title: const Text('Dark'),
+                trailing: isDark
+                    ? const Icon(Icons.check, color: Colors.green)
+                    : null,
+                onTap: () {
+                  themeProvider.setMode(AppThemeMode.dark);
+                  Navigator.of(ctx).pop();
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final user = Supabase.instance.client.auth.currentUser;
-    final email = user?.email ?? '';
-    final name = user?.userMetadata?['name'] ?? email;
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDark = themeProvider.isDark;
+
+    final name = _displayName ?? '';
+    final email = _email ?? '';
+
+    // ใช้สีจาก theme ปัจจุบัน ทำให้ gradient เปลี่ยนตาม theme
+    final scheme = Theme.of(context).colorScheme;
+    final bgColors = [
+      scheme.primary.withOpacity(isDark ? 0.95 : 0.80),
+      scheme.secondary.withOpacity(isDark ? 0.95 : 0.80),
+    ];
 
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [TTColors.bgStart, TTColors.bgEnd],
+          colors: bgColors,
         ),
       ),
       child: Scaffold(
@@ -64,11 +163,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           color: Colors.white,
                         ),
                         onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Notifications coming soon'),
-                            ),
-                          );
+                          _showSnack('Notifications coming soon');
                         },
                       ),
                     ),
@@ -89,11 +184,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                     alignment: Alignment.center,
-                    child: const Icon(
-                      Icons.account_circle,
-                      size: 110,
-                      color: Colors.white,
-                    ),
+                    child: _avatarUrl != null && _avatarUrl!.isNotEmpty
+                        ? ClipOval(
+                            child: Image.network(
+                              _avatarUrl!,
+                              width: 112,
+                              height: 112,
+                              fit: BoxFit.cover,
+                            ),
+                          )
+                        : const Icon(
+                            Icons.account_circle,
+                            size: 110,
+                            color: Colors.white,
+                          ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -126,7 +230,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // ---------- Balance (no refresh icon) ----------
+                // ---------- Balance ----------
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -140,11 +244,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             fontWeight: FontWeight.w600,
                           ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     FutureBuilder<double>(
                       future: _balanceFuture,
                       builder: (context, snapshot) {
-                        // กำลังโหลด
                         if (snapshot.connectionState !=
                             ConnectionState.done) {
                           return const SizedBox(
@@ -159,16 +262,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           );
                         }
 
-                        // มี error
                         if (snapshot.hasError) {
                           return Row(
                             mainAxisSize: MainAxisSize.min,
                             children: const [
-                              Icon(
-                                Icons.error_outline,
-                                color: Colors.orangeAccent,
-                                size: 20,
-                              ),
+                              Icon(Icons.error_outline,
+                                  color: Colors.orangeAccent, size: 20),
                               SizedBox(width: 4),
                               Text(
                                 'Error',
@@ -181,7 +280,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           );
                         }
 
-                        // แสดงยอดจริง
                         final value = snapshot.data ?? 0;
                         final isPositive = value >= 0;
                         final text = value.toStringAsFixed(0);
@@ -206,13 +304,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 24),
 
                 // ---------- Menu ----------
-                _Menu(label: 'Edit Profile', onTap: () {}),
+                _Menu(label: 'Edit Profile', onTap: _openEditProfile),
                 const Divider(color: Colors.white24, height: 24),
-                _Menu(label: 'History', onTap: () {}),
+                _Menu(
+                  label: 'History',
+                  onTap: () => context.push('/my-history'),
+                ),
                 const Divider(color: Colors.white24, height: 24),
-                _Menu(label: 'Language', onTap: () {}),
+                _Menu(
+                  label: 'Language',
+                  onTap: () => _showSnack('Language: coming soon'),
+                ),
                 const Divider(color: Colors.white24, height: 24),
-                _Menu(label: 'App Theme', onTap: () {}),
+                _Menu(
+                  label: 'App Theme (${isDark ? 'Dark' : 'Light'})',
+                  onTap: _openThemeChooser,
+                ),
 
                 const Spacer(),
 
