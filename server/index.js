@@ -9,7 +9,7 @@ import { authenticate } from './middleware/authMiddleware.js';
 import tripsRouter from './routes/trips.js';
 import inviteRouter from "./routes/invite.js";
 import tripMembersRouter from './routes/tripMembers.js';
-import notificationRouter from './routes/notification.js';
+import notificationRouter from './routes/notifications.js';
 
 const app = express()
 app.use(cors({ origin: ['http://localhost:3000'], credentials: true }))
