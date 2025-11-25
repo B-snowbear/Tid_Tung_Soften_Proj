@@ -1,4 +1,4 @@
-name: tid_tung_soften_proj
+﻿name: tid_tung_soften_proj
 description: "A new Flutter project."
 publish_to: 'none'
 
@@ -33,4 +33,5 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/.env             
+    - assets/.env
+    - assets/images/tidtung_logo.png

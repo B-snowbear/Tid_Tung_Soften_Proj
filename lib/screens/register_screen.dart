@@ -6,6 +6,7 @@ import '../theme.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
+
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
 }
@@ -15,17 +16,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _email = TextEditingController();
   final _pwd = TextEditingController();
   final _confirm = TextEditingController();
+
   bool _obscure1 = true, _obscure2 = true;
   bool _loading = false;
 
   Future<void> _handleRegister() async {
     if (_loading) return;
+
     final name = _name.text.trim();
     final email = _email.text.trim();
     final pwd = _pwd.text;
     final confirm = _confirm.text;
+
     final passwordRegex =
-    RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$');
+        RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$');
 
     String? error;
     if (name.isEmpty) {
@@ -34,13 +38,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
       error = 'Please enter a valid email';
     } else if (!passwordRegex.hasMatch(pwd)) {
       error =
-          'Password must be ≥8 chars and include upper, lower, number, and special character.';
+          'Password must be ≥ 8 chars and include upper, lower, number, and special character.';
     } else if (pwd != confirm) {
       error = 'Passwords do not match';
     }
 
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error)));
       return;
     }
 
@@ -51,25 +56,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final res = await client.auth.signUp(
         email: email,
         password: pwd,
-        data: {'full_name': name}, // goes to user_metadata; DB trigger can copy to profiles
+        data: {
+          'full_name': name,
+        },
         emailRedirectTo: kIsWeb ? null : 'tidtung://auth-callback',
       );
 
-      // If your project requires email confirmation, res.session will be null until the user confirms.
+      if (!mounted) return;
+
       if (res.session != null) {
-        if (!mounted) return;
-        context.go('/'); // already signed in
+        // signed in already
+        context.go('/');
       } else {
-        if (!mounted) return;
+        // need email confirmation
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Check your email to confirm your account.')),
+          const SnackBar(
+            content: Text('Check your email to confirm your account.'),
+          ),
         );
         context.go('/login');
       }
     } on supa.AuthException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Sign up failed: $e')));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Sign up failed: $e')),
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -80,7 +95,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [TTColors.bgStart, TTColors.bgEnd],
         ),
       ),
@@ -89,8 +105,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         body: SafeArea(
           child: Stack(
             children: [
+              // back button
               Positioned(
-                left: 12, top: 8,
+                left: 12,
+                top: 8,
                 child: IconButton(
                   icon: const Icon(Icons.arrow_back, color: Colors.white),
                   onPressed: () => context.pop(),
@@ -98,40 +116,67 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               Center(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 420),
                     child: Column(
                       children: [
+                        // 🔹 ใช้โลโก้ตัวเดียวกับหน้า Login
                         Image.asset(
-                          'assets/images/tid_tung_logo.png',
-                          width: 92, height: 92, fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) => const SizedBox(height: 92),
+                          'assets/images/tidtung_logo.png',
+                          width: 92,
+                          height: 92,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) =>
+                              const SizedBox(height: 92),
                         ),
                         const SizedBox(height: 16),
                         ShaderMask(
                           shaderCallback: (r) => const LinearGradient(
                             colors: [TTColors.c0DBCF6, TTColors.cB7EDFF],
                           ).createShader(r),
-                          child: Text('Create Profile',
-                            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                              color: Colors.white, fontWeight: FontWeight.w800,
-                            )),
+                          child: Text(
+                            'Create Profile',
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineMedium
+                                ?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                          ),
                         ),
                         const SizedBox(height: 24),
 
-                        _Field(controller: _name, hint: 'Enter Name', icon: Icons.edit),
-                        const SizedBox(height: 12),
-                        _Field(controller: _email, hint: 'Email', icon: Icons.email_outlined),
-                        const SizedBox(height: 12),
                         _Field(
-                          controller: _pwd, hint: 'Password', icon: Icons.lock_outline,
-                          obscure: _obscure1, onToggleObscure: () => setState(() => _obscure1 = !_obscure1),
+                          controller: _name,
+                          hint: 'Enter Name',
+                          icon: Icons.edit,
                         ),
                         const SizedBox(height: 12),
                         _Field(
-                          controller: _confirm, hint: 'Confirm Password', icon: Icons.lock_outline,
-                          obscure: _obscure2, onToggleObscure: () => setState(() => _obscure2 = !_obscure2),
+                          controller: _email,
+                          hint: 'Email',
+                          icon: Icons.email_outlined,
+                        ),
+                        const SizedBox(height: 12),
+                        _Field(
+                          controller: _pwd,
+                          hint: 'Password',
+                          icon: Icons.lock_outline,
+                          obscure: _obscure1,
+                          onToggleObscure: () =>
+                              setState(() => _obscure1 = !_obscure1),
+                        ),
+                        const SizedBox(height: 12),
+                        _Field(
+                          controller: _confirm,
+                          hint: 'Confirm Password',
+                          icon: Icons.lock_outline,
+                          obscure: _obscure2,
+                          onToggleObscure: () =>
+                              setState(() => _obscure2 = !_obscure2),
                         ),
 
                         const SizedBox(height: 28),
@@ -151,6 +196,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 }
+
+// ------------------ widgets ------------------
 
 class _Field extends StatelessWidget {
   const _Field({
@@ -174,19 +221,26 @@ class _Field extends StatelessWidget {
       obscureText: obscure,
       style: const TextStyle(color: Colors.white),
       cursorColor: TTColors.cB7EDFF,
-      keyboardType: hint == 'Email' ? TextInputType.emailAddress : TextInputType.text,
+      keyboardType:
+          hint == 'Email' ? TextInputType.emailAddress : TextInputType.text,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
         filled: true,
         fillColor: Colors.white.withOpacity(0.18),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        prefixIcon: Icon(icon, color: Colors.white.withOpacity(0.9)),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        prefixIcon: Icon(
+          icon,
+          color: Colors.white.withOpacity(0.9),
+        ),
         suffixIcon: onToggleObscure == null
             ? null
             : IconButton(
-                icon: Icon(obscure ? Icons.visibility_off : Icons.visibility,
-                    color: Colors.white.withOpacity(0.9)),
+                icon: Icon(
+                  obscure ? Icons.visibility_off : Icons.visibility,
+                  color: Colors.white.withOpacity(0.9),
+                ),
                 onPressed: onToggleObscure,
               ),
         border: OutlineInputBorder(
@@ -199,7 +253,8 @@ class _Field extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(color: TTColors.c0DBCF6, width: 1.4),
+          borderSide:
+              const BorderSide(color: TTColors.c0DBCF6, width: 1.4),
         ),
       ),
     );
@@ -208,6 +263,7 @@ class _Field extends StatelessWidget {
 
 class _GlowButton extends StatelessWidget {
   const _GlowButton({required this.text, required this.onTap});
+
   final String text;
   final VoidCallback? onTap;
 
@@ -215,7 +271,13 @@ class _GlowButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        boxShadow: [BoxShadow(blurRadius: 18, offset: Offset(0, 8), color: Color(0x330DBCF6))],
+        boxShadow: [
+          BoxShadow(
+            blurRadius: 18,
+            offset: Offset(0, 8),
+            color: Color(0x330DBCF6),
+          ),
+        ],
       ),
       child: SizedBox(
         width: 220,
@@ -224,9 +286,14 @@ class _GlowButton extends StatelessWidget {
           style: FilledButton.styleFrom(
             backgroundColor: TTColors.primary,
             padding: const EdgeInsets.symmetric(vertical: 14),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+            ),
           ),
-          child: Text(text, style: const TextStyle(fontWeight: FontWeight.w700)),
+          child: Text(
+            text,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
         ),
       ),
     );
